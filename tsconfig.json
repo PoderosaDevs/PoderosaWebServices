@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "ES6",
+    "module": "commonjs",
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "esModuleInterop": true,
+    "jsx": "react-jsx" // Adicione isso se estiver usando React com TypeScript
+  },
+  "include": [
+    "src/**/*",          // Inclua toda a pasta src para TypeScript
+    "vite-env.d.ts"      // Inclua o arquivo de definição de tipo
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

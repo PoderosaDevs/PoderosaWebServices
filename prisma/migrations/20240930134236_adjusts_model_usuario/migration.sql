@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "usuario" ALTER COLUMN "telefone" DROP NOT NULL,
+ALTER COLUMN "is_whatsapp" DROP NOT NULL,
+ALTER COLUMN "funcao" DROP NOT NULL;
