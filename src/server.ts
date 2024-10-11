@@ -30,9 +30,15 @@ const startServer = async () => {
     await server.start();
     server.applyMiddleware({ app });
 
+    // Use a porta da variável de ambiente ou 4000 como padrão
+    const port = process.env.PORT || 4000;
+
+    // Crie a URL pública
+    const publicUrl = process.env.REACT_APP_API_URL || `http://localhost:${port}${server.graphqlPath}`;
+
     // Inicie o servidor Express
-    app.listen({ port: 4000 }, () => {
-      console.log(`Server ready at http://localhost:4000${server.graphqlPath}`);
+    app.listen({ port }, () => {
+      console.log(`Server ready at ${publicUrl}`);
     });
   } catch (error) {
     // Captura e exibe erros gerais de inicialização
