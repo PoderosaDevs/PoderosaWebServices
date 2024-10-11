@@ -8,16 +8,16 @@ import { HashPassword } from "../snippets/ValidationPassword";
 
 class FuncionarioService {
   async get() {
-    const employees = await prisma.user.findMany({
-      where: { situacao: true, type_person:'EMPLOYEE' },
+    const employees = await prisma.usuario.findMany({
+      where: { situacao: true, tipo_pessoa:'EMPLOYEE' },
     });
     return employees; // Retorne o array diretamente, sem encapsular em um objeto
   }
 
 
   async getByID(id: number) {
-    const employee = await prisma.user.findUnique({
-      where: { id, type_person:'EMPLOYEE' },
+    const employee = await prisma.usuario.findUnique({
+      where: { id, tipo_pessoa:'EMPLOYEE' },
     });
 
     return { result: employee };
@@ -33,16 +33,16 @@ class FuncionarioService {
     const uuid = v4(); // Gera o UUID para o novo usuário
 
     // Criptografa a senha
-    const hashedPassword = await HashPassword(data.password, 10)
+    const hashedPassword = await HashPassword(data.senha, 10)
 
-    const employee = await prisma.user.create({
+    const employee = await prisma.usuario.create({
       data: {
         ...data,
         uuid,
-        password: hashedPassword,
+        senha: hashedPassword,
         situacao: true, // Define a situação como true por padrão
         created_at: new Date(), // Define a data de criação
-        type_person: 'EMPLOYEE'
+        tipo_pessoa: 'EMPLOYEE'
       },
     });
 
@@ -50,8 +50,8 @@ class FuncionarioService {
   }
 
   async update(id: number, data: object) {
-    const employee = await prisma.user.update({
-      where: { id, type_person: 'EMPLOYEE' },
+    const employee = await prisma.usuario.update({
+      where: { id, tipo_pessoa: 'EMPLOYEE' },
       data,
     });
 
@@ -59,8 +59,8 @@ class FuncionarioService {
   }
 
   async delete(id: number) {
-    const employee = await prisma.user.update({
-      where: { id, type_person: 'EMPLOYEE' },
+    const employee = await prisma.usuario.update({
+      where: { id, tipo_pessoa: 'EMPLOYEE' },
       data: { situacao: false },
     });
 

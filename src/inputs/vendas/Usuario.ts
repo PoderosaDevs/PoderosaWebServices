@@ -1,6 +1,6 @@
 import { InputType, Field } from 'type-graphql';
 import { DateScalar } from '../../scalars/DateScalar';
-import { TypePerson } from '@prisma/client';
+import { type_person } from '@prisma/client';
 
 @InputType()
 export class FuncionarioInput {
@@ -52,6 +52,6 @@ export class FuncionarioInput {
   @Field({ nullable: true })
   usuario_foto?: string;
 
-  @Field(() => TypePerson, { nullable: true })
-  tipo_pessoa?: TypePerson;
+  @Field(() => type_person, { nullable: true })
+  tipo_pessoa?: type_person;
 }
