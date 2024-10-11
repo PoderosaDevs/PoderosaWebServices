@@ -66,7 +66,7 @@ class FuncionarioService {
     const hashedPassword = await HashPassword(data.senha, 10);
 
     // Verifica se o tipo de sistema 'SALES' existe
-    const tipoSistema = await prisma.tipo_Sistema.findUnique({
+    const tipoSistema = await prisma.tipo_sistema.findUnique({
       where: { nome: 'SALES' }
     });
 
