@@ -5,7 +5,7 @@ import express from 'express';
 import { ApolloServer } from 'apollo-server-express';
 import { createSchema } from './schema'; // Ajuste o caminho conforme necessário
 import { prisma } from './database';
-import { ApolloServerPluginLandingPageGraphQLPlayground } from "apollo-server-core";
+import { ApolloServerPluginLandingPageGraphQLPlayground } from 'apollo-server-core';
 import cors from 'cors'; // Importa o CORS
 
 const app = express();
@@ -33,6 +33,8 @@ const startServer = async () => {
     const server = new ApolloServer({
       schema,
       plugins: [ApolloServerPluginLandingPageGraphQLPlayground()],
+      persistedQueries: false, // Para evitar ataques de negação de serviço
+      cache: 'bounded', // Define cache limitado para maior segurança
     });
 
     // Aguarde o servidor Apollo ser iniciado
@@ -45,8 +47,8 @@ const startServer = async () => {
     const port = process.env.PORT || 4000;
 
     // Inicie o servidor Express
-    app.listen({ port }, () => {
-      console.log(`Server ready at http://localhost:${port}${server.graphqlPath}`);
+    app.listen(port, () => {
+      console.log(`Servidor pronto em http://localhost:${port}${server.graphqlPath}`);
     });
   } catch (error) {
     // Captura e exibe erros gerais de inicialização
