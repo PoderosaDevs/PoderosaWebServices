@@ -1,11 +1,11 @@
 import * as dotenv from 'dotenv';
+dotenv.config(); // Carrega variáveis de ambiente do arquivo .env
+
 import express from 'express';
 import { ApolloServer } from 'apollo-server-express';
 import { createSchema } from './schema'; // Ajuste o caminho conforme necessário
 import { prisma } from './database';
-import cors from 'cors';
 import { ApolloServerPluginLandingPageGraphQLPlayground } from "apollo-server-core";
-dotenv.config(); // Carrega variáveis de ambiente do arquivo .env
 
 const app = express();
 
@@ -26,28 +26,19 @@ const startServer = async () => {
     const server = new ApolloServer({
       schema,
       plugins: [ApolloServerPluginLandingPageGraphQLPlayground()],
-      context: ({ req, res }) => ({ req, res }),
-    });
+    });
 
     // Aguarde o servidor Apollo ser iniciado
     await server.start();
     server.applyMiddleware({ app });
 
-    // Habilitar CORS
-    app.use(cors({
-      origin: '*',  // Ajuste conforme necessário para segurança
-      credentials: true
-    }));
-
     // Use a porta da variável de ambiente ou 4000 como padrão
     const port = process.env.PORT || 4000;
 
-    // Crie a URL pública
-    const publicUrl = `https://${process.env.RENDER_EXTERNAL_URL}${server.graphqlPath}`;
 
     // Inicie o servidor Express
     app.listen({ port }, () => {
-      console.log(`Server ready at ${publicUrl}`);
+      console.log(`Server ready`);
     });
   } catch (error) {
     // Captura e exibe erros gerais de inicialização
