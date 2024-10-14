@@ -4,7 +4,7 @@ import { ApolloServer } from 'apollo-server-express';
 import { createSchema } from './schema'; // Ajuste o caminho conforme necessário
 import { prisma } from './database';
 import cors from 'cors';
-
+import { ApolloServerPluginLandingPageGraphQLPlayground } from "apollo-server-core";
 dotenv.config(); // Carrega variáveis de ambiente do arquivo .env
 
 const app = express();
@@ -25,9 +25,9 @@ const startServer = async () => {
     const schema = await createSchema();
     const server = new ApolloServer({
       schema,
-      introspection: true,  // Permitir introspecção em produção
-      // O playground foi removido nas versões mais recentes
-    });
+      plugins: [ApolloServerPluginLandingPageGraphQLPlayground()],
+      context: ({ req, res }) => ({ req, res }),
+    });
 
     // Aguarde o servidor Apollo ser iniciado
     await server.start();
