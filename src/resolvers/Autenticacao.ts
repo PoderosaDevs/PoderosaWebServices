@@ -51,11 +51,19 @@ export class AutenticacaoResolver {
         funcao: DataUser.data.funcao,
         tipo_usuario: DataUser.data.tipo_pessoa,
         tipo_sistemas: systemNames,
+        complemento: DataUser.data.complemento,
+        cpf: DataUser.data.cpf,
+        data_nascimento: DataUser.data.data_nascimento,
+        endereco: DataUser.data.endereco,
+        is_whatsapp: DataUser.data.is_whatsapp,
+        numero: DataUser.data.numero,
+        telefone: DataUser.data.telefone,
+        cep: DataUser.data.cep,
         id: DataUser.data.id,
         ip: address(),
       },
       authSecret,
-      { expiresIn: "50m" }
+      { expiresIn: "1m" }
     );
 
 

@@ -32,7 +32,7 @@ class VendaServices {
           data_venda: 'desc', // Ordenar do mais recente para o mais antigo
         },
       });
-  
+
       return vendas.map((venda) => ({
         ...venda,
         venda_detalhe: venda.venda_detalhe || [], // Garante que venda_detalhes nunca seja null
@@ -42,8 +42,8 @@ class VendaServices {
       throw new Error("Erro ao buscar vendas.");
     }
   }
-  
-  
+
+
 
   // Obtém uma venda por ID
   async getByID(id: number) {
@@ -101,11 +101,11 @@ class VendaServices {
           funcionario: true,
         },
       });
-  
+
       if (vendas.length === 0) {
         throw new GraphQLError("Nenhuma venda encontrada para este usuário.");
       }
-  
+
       return vendas.map((venda) => ({
         id: venda.id,
         data_venda: venda.data_venda,
@@ -130,97 +130,109 @@ class VendaServices {
       throw new GraphQLError("Erro ao buscar vendas por usuário.");
     }
   }
-  
 
-  // Cria uma nova venda
-  async create(data: VendaInput) {
-    // Verifica se o funcionário existe e está ativo
-    const funcionario = await prisma.usuario.findUnique({
-      where: { id: data.funcionarioId },
-      include: {
-        tipo_sistemas: {
-          where: {
-            tipo_sistema: {
-              nome: "SALES",
-            },
+// Cria uma nova venda
+async create(data: VendaInput) {
+  // Verifica se o funcionário existe e está ativo
+  const funcionario = await prisma.usuario.findUnique({
+    where: { id: data.funcionarioId },
+    include: {
+      tipo_sistemas: {
+        where: {
+          tipo_sistema: {
+            nome: "SALES",
           },
         },
       },
-    });
+    },
+  });
 
-    const loja = await prisma.loja.findUnique({
-      where: { id: data.lojaId },
-    });
+  const loja = await prisma.loja.findUnique({
+    where: { id: data.lojaId },
+  });
 
-    if (!loja) {
-      throw new GraphQLError("Loja não encontrada.");
-    }
-
-    if (!funcionario) {
-      throw new GraphQLError("Loja não encontrada.");
-    }
-
-    if (funcionario.tipo_pessoa !== "EMPLOYEE") {
-      throw new GraphQLError("Usuário não é um funcionário.");
-    }
-    
-
-    if (funcionario.tipo_sistemas.length === 0) {
-      throw new GraphQLError(
-        "Funcionário não está associado ao sistema 'SALES'."
-      );
-    }
-
-    // Verifica se os produtos existem e calcula os pontos totais
-    let pontosTotais = 0;
-
-    const vendaDetalhesCriados = await Promise.all(
-      data.vendaDetalhes.map(async (detalhe: VendaDetalheInput) => {
-        const produto = await prisma.produto.findUnique({
-          where: { id: detalhe.produtoId },
-        });
-
-        if (!produto) {
-          throw new GraphQLError(
-            `Produto com ID ${detalhe.produtoId} não encontrado.`
-          );
-        }
-
-        // Calcula os pontos baseados no produto e quantidade
-        const pontos = (produto.pontos ?? 0) * (detalhe.quantidade ?? 0);
-        pontosTotais += pontos;
-
-        return {
-          produto_id: detalhe.produtoId,
-          quantidade: detalhe.quantidade ?? 0,
-          pontos: pontos, // Define os pontos calculados para cada detalhe
-        };
-      })
-    );
-
-    // Cria a venda
-    const venda = await prisma.venda.create({
-      data: {
-        funcionario_id: data.funcionarioId,
-        loja_id: data.lojaId,
-        data_venda: data.data_venda ?? new Date(), // Usa a data fornecida ou a data atual
-        pontos_totais: pontosTotais,
-        situacao: true, // Define a situação como ativa por padrão
-        venda_detalhe: {
-          create: vendaDetalhesCriados,
-        },
-      },
-      include: {
-        venda_detalhe: {
-          include: {
-            produto: true,
-          },
-        },
-      },
-    });
-
-    return venda;
+  if (!loja) {
+    throw new GraphQLError("Loja não encontrada.");
   }
+
+  if (!funcionario) {
+    throw new GraphQLError("Funcionário não encontrado.");
+  }
+
+  if (funcionario.tipo_pessoa !== "EMPLOYEE") {
+    throw new GraphQLError("Usuário não é um funcionário.");
+  }
+
+  if (funcionario.tipo_sistemas.length === 0) {
+    throw new GraphQLError(
+      "Funcionário não está associado ao sistema 'SALES'."
+    );
+  }
+
+  // Verifica se já existe uma venda na mesma data para o mesmo funcionário e loja
+  const vendaExistente = await prisma.venda.findFirst({
+    where: {
+      funcionario_id: data.funcionarioId,
+      loja_id: data.lojaId,
+      data_venda: data.data_venda ?? new Date(), // Usa a data fornecida ou a data atual
+    },
+  });
+
+  if (vendaExistente) {
+    throw new GraphQLError("Já existe uma venda registrada nessa data para este funcionário e loja.");
+  }
+
+  // Verifica se os produtos existem e calcula os pontos totais
+  let pontosTotais = 0;
+
+  const vendaDetalhesCriados = await Promise.all(
+    data.vendaDetalhes.map(async (detalhe: VendaDetalheInput) => {
+      const produto = await prisma.produto.findUnique({
+        where: { id: detalhe.produtoId },
+      });
+
+      if (!produto) {
+        throw new GraphQLError(
+          `Produto com ID ${detalhe.produtoId} não encontrado.`
+        );
+      }
+
+      // Calcula os pontos baseados no produto e quantidade
+      const pontos = (produto.pontos ?? 0) * (detalhe.quantidade ?? 0);
+      pontosTotais += pontos;
+
+      return {
+        produto_id: detalhe.produtoId,
+        quantidade: detalhe.quantidade ?? 0,
+        pontos: pontos, // Define os pontos calculados para cada detalhe
+      };
+    })
+  );
+
+  // Cria a venda
+  const venda = await prisma.venda.create({
+    data: {
+      funcionario_id: data.funcionarioId,
+      loja_id: data.lojaId,
+      data_venda: data.data_venda ?? new Date(), // Usa a data fornecida ou a data atual
+      pontos_totais: pontosTotais,
+      situacao: true, // Define a situação como ativa por padrão
+      venda_detalhe: {
+        create: vendaDetalhesCriados,
+      },
+    },
+    include: {
+      venda_detalhe: {
+        include: {
+          produto: true,
+        },
+      },
+    },
+  });
+
+  return venda;
+}
+
 
   // Atualiza uma venda existente
   async update(id: number, data: Partial<VendaInput>) {

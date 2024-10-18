@@ -32,7 +32,6 @@ const startServer = async () => {
     const schema = await createSchema();
     const server = new ApolloServer({
       schema,
-      plugins: [ApolloServerPluginLandingPageGraphQLPlayground()],
       persistedQueries: false, // Para evitar ataques de negação de serviço
       cache: 'bounded', // Define cache limitado para maior segurança
     });
