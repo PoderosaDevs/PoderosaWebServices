@@ -16,34 +16,35 @@ enum type_person {
 }
 
 model usuario {
-  id               Int                    @id @default(autoincrement())
-  uuid             String                 @db.Char(36)
-  token_api        String?
-  senha            String
-  email            String                 @unique
-  telefone         String?
-  is_whatsapp      Boolean?
-  cep              String?
-  endereco         String?
-  numero           String?
-  complemento      String?
-  tema             String?
-  cpf              String?                @unique
-  cnpj             String?                @unique
-  situacao         Boolean                @default(true)
-  created_at       DateTime               @default(now())
-  deleted_at       DateTime?
-  updated_at       DateTime               @updatedAt
-  data_nascimento  DateTime?
-  nome             String
-  funcao           String?
-  usuario_foto     String?
-  tipo_pessoa      type_person            @default(EMPLOYEE)
-  tipo_sistemas    usuario_tipo_sistema[]
-  avaliacoes       avaliacao[]
-  dias_trabalhados dia_trabalhado[]
-  vendas           venda[]
-  metas            Meta[]                 @relation("UsuarioMetas") // Relacionamento com metas
+  id                       Int                      @id @default(autoincrement())
+  uuid                     String                   @db.Char(36)
+  token_api                String?
+  senha                    String
+  email                    String                   @unique
+  telefone                 String?
+  is_whatsapp              Boolean?
+  cep                      String?
+  endereco                 String?
+  numero                   String?
+  complemento              String?
+  tema                     String?
+  cpf                      String?                  @unique
+  cnpj                     String?                  @unique
+  situacao                 Boolean                  @default(true)
+  created_at               DateTime                 @default(now())
+  deleted_at               DateTime?
+  updated_at               DateTime                 @updatedAt
+  data_nascimento          DateTime?
+  nome                     String
+  funcao                   String?
+  usuario_foto             String?
+  tipo_pessoa              type_person              @default(EMPLOYEE)
+  tipo_sistemas            usuario_tipo_sistema[]
+  avaliacoes               avaliacao[]
+  dias_trabalhados         dia_trabalhado[]
+  dia_trabalhado_estoque dia_trabalhado_estoque[]
+  vendas                   venda[]
+  metas                    Meta[]                   @relation("UsuarioMetas") // Relacionamento com metas
 }
 
 model usuario_tipo_sistema {
@@ -80,6 +81,17 @@ model dia_trabalhado {
   @@index([user_id, data])
 }
 
+model dia_trabalhado_estoque {
+  id              Int      @id @default(autoincrement())
+  pedidos         Int
+  realizados      Int
+  data_trabalho   DateTime @default(now())
+  horario_entrada String
+  horario_saida   String
+  usuario         usuario? @relation(fields: [usuarioId], references: [id])
+  usuarioId       Int?
+}
+
 model venda {
   id             Int             @id @default(autoincrement())
   funcionario_id Int
@@ -88,7 +100,7 @@ model venda {
   situacao       Boolean
   funcionario    usuario         @relation(fields: [funcionario_id], references: [id])
   venda_detalhe  venda_detalhe[]
-  loja_id        Int?            // Nova coluna que referencia a loja
+  loja_id        Int? // Nova coluna que referencia a loja
   loja           loja?           @relation(fields: [loja_id], references: [id]) // Adicionado '?' aqui
 
   @@unique([funcionario_id, data_venda])
@@ -188,13 +200,13 @@ model mail {
 }
 
 model linha {
-  id             Int                  @id @default(autoincrement())
-  nome           String               @unique
-  marcaId        Int
-  marca          marca                @relation(fields: [marcaId], references: [id])
-  produtos       produto[]            @relation("linha_produto")
-  tipo_sistemas  linha_tipo_sistema[]
-  linha_produto  linha_produto[]
+  id            Int                  @id @default(autoincrement())
+  nome          String               @unique
+  marcaId       Int
+  marca         marca                @relation(fields: [marcaId], references: [id])
+  produtos      produto[]            @relation("linha_produto")
+  tipo_sistemas linha_tipo_sistema[]
+  linha_produto linha_produto[]
 
   @@index([nome])
 }
@@ -220,36 +232,36 @@ model linha_produto {
 }
 
 model loja {
-  id              Int       @id @default(autoincrement())
-  nome_fantasia   String
-  razao_social    String
-  vendas          venda[]   // Relacionamento com vendas
+  id            Int     @id @default(autoincrement())
+  nome_fantasia String
+  razao_social  String
+  vendas        venda[] // Relacionamento com vendas
 }
 
 model Meta {
-  id                Int      @id @default(autoincrement())
-  descricao         String   // Descrição da meta
-  data_inicio       DateTime // Data de início da meta
-  data_fim          DateTime // Data de fim da meta
-  marca_id          Int      // ID da marca associada
-  quantidade_total  Int      // Total de produtos que devem ser vendidos (soma das etapas)
-  situacao          Boolean  // Situação da meta (ativa ou inativa)
-  etapas            MetaEtapa[]
-  usuarios          usuario[] @relation("UsuarioMetas") // Relacionamento com múltiplos usuários
-  created_at        DateTime @default(now())
-  updated_at        DateTime @updatedAt
+  id               Int         @id @default(autoincrement())
+  descricao        String // Descrição da meta
+  data_inicio      DateTime // Data de início da meta
+  data_fim         DateTime // Data de fim da meta
+  marca_id         Int // ID da marca associada
+  quantidade_total Int // Total de produtos que devem ser vendidos (soma das etapas)
+  situacao         Boolean // Situação da meta (ativa ou inativa)
+  etapas           MetaEtapa[]
+  usuarios         usuario[]   @relation("UsuarioMetas") // Relacionamento com múltiplos usuários
+  created_at       DateTime    @default(now())
+  updated_at       DateTime    @updatedAt
 
-  marca             marca     @relation(fields: [marca_id], references: [id]) // Relacionamento para a marca
+  marca marca @relation(fields: [marca_id], references: [id]) // Relacionamento para a marca
 
   @@index([marca_id])
 }
 
 model MetaEtapa {
-  id                Int      @id @default(autoincrement())
-  meta_id           Int      // ID da meta associada
-  quantidade        Int      // Quantidade para essa etapa
-  created_at        DateTime @default(now())
-  updated_at        DateTime @updatedAt
+  id         Int      @id @default(autoincrement())
+  meta_id    Int // ID da meta associada
+  quantidade Int // Quantidade para essa etapa
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
-  meta              Meta      @relation(fields: [meta_id], references: [id])
+  meta Meta @relation(fields: [meta_id], references: [id])
 }

@@ -10,6 +10,8 @@ export { MarcaResolver as Marca } from "./Marcas";
 // Manager Stock
 
 export { FuncionarioResolver as StockFuncionario } from './estoque/Funcionario'
+export { DiaTrabalhadoEstoqueResolver as StockDiaTrabalhadoFuncionario } from './estoque/DiaTrabalhado'
+
 
 
 // Manager Sales

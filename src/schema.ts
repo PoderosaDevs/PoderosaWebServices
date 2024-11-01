@@ -10,7 +10,9 @@ import {
   Loja,
   Linha,
   Marca,
-  Meta
+  Meta,
+  StockDiaTrabalhadoFuncionario,
+  StockFuncionario
 } from './resolvers';
 
 export const createSchema = async () => {
@@ -24,7 +26,9 @@ export const createSchema = async () => {
       Loja,
       Linha,
       Marca,
-      Meta
+      Meta,
+      StockDiaTrabalhadoFuncionario,
+      StockFuncionario
     ],
     scalarsMap: [
       { type: Date, scalar: DateScalar },

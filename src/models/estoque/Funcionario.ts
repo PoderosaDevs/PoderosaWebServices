@@ -1,5 +1,7 @@
-import { ObjectType, Field, ID, Int } from 'type-graphql';
+import { ObjectType, Field, ID } from 'type-graphql';
 import { TypePerson } from '../../enums/TypePerson';
+import { DiaTrabalhadoEstoqueModel } from './DiaTrabalho';
+import { TipoSistemaModel } from '../TipoSistema';
 
 @ObjectType()
 export class FuncionarioModel {
@@ -7,16 +9,16 @@ export class FuncionarioModel {
   id!: number;
 
   @Field({ nullable: true })
-  api_token?: string;
+  token_api?: string;
 
   @Field()
-  password!: string;
+  senha!: string;
 
   @Field()
   email!: string;
 
   @Field()
-  phone!: string;
+  telefone!: string;
 
   @Field()
   uuid!: string;
@@ -28,19 +30,37 @@ export class FuncionarioModel {
   cep?: string;
 
   @Field({ nullable: true })
-  address?: string;
+  endereco?: string;
 
   @Field({ nullable: true })
-  number?: string;
+  numero?: string;
 
   @Field({ nullable: true })
-  complement?: string;
+  complemento?: string;
 
   @Field({ nullable: true })
-  theme?: string;
+  tema?: string;
 
   @Field({ nullable: true })
   cpf?: string;
+
+  @Field({ nullable: true })
+  cnpj?: string;
+
+  @Field(() => Date, { nullable: true })
+  data_nascimento?: Date;
+
+  @Field()
+  nome!: string;
+
+  @Field()
+  funcao!: string;
+
+  @Field(() => TypePerson, { nullable: true })
+  tipo_pessoa?: TypePerson;
+
+  @Field({ nullable: true })
+  usuario_foto?: string;
 
   @Field()
   situacao!: boolean;
@@ -54,15 +74,10 @@ export class FuncionarioModel {
   @Field()
   updated_at!: Date;
 
-  @Field({ nullable: true })
-  dateOfBirth?: Date;
+  // Adicionando o relacionamento com Tipo_Sistema
+  @Field(() => [TipoSistemaModel], { nullable: true })
+  tipo_sistema?: TipoSistemaModel[];
 
-  @Field()
-  name!: string;
-
-  @Field()
-  role!: string;
-
-  @Field(() => TypePerson, { nullable: true })
-  type_person?: TypePerson;
+  @Field(() => [DiaTrabalhadoEstoqueModel], { nullable: true }) // Campo para dias trabalhados
+  dias_trabalhados_estoque?: DiaTrabalhadoEstoqueModel[]; // Relacionamento com os dias trabalhados
 }

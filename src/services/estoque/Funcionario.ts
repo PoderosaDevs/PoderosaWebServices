@@ -24,6 +24,26 @@ class FuncionarioService {
     return usuarios; // Retorna o array diretamente, sem encapsular em um objeto
   }
 
+  async getStock() {
+    const usuarios = await prisma.usuario.findMany({
+      include: {
+        dia_trabalhado_estoque: true
+      },
+      where: {
+        situacao: true,
+        tipo_pessoa: 'EMPLOYEE',
+        tipo_sistemas: {
+          some: {
+            tipo_sistema: {
+              nome: 'ESTOQUE'
+            }
+          }
+        }
+      }
+    });
+    return usuarios; // Retorna o array diretamente, sem encapsular em um objeto
+  }
+
   async getByID(id: number) {
     const user = await prisma.usuario.findUnique({
       where: { id },
