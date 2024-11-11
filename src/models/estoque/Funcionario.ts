@@ -79,5 +79,5 @@ export class FuncionarioModel {
   tipo_sistema?: TipoSistemaModel[];
 
   @Field(() => [DiaTrabalhadoEstoqueModel], { nullable: true }) // Campo para dias trabalhados
-  dias_trabalhados_estoque?: DiaTrabalhadoEstoqueModel[]; // Relacionamento com os dias trabalhados
+  dia_trabalhado_estoque?: DiaTrabalhadoEstoqueModel[]; // Relacionamento com os dias trabalhados
 }

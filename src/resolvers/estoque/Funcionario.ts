@@ -11,5 +11,4 @@ export class FuncionarioResolver {
     const employees = await FuncionarioService.getStock(); // Espera receber diretamente a lista de usuários
     return employees; // Retorna a lista diretamente
   }
-
 }

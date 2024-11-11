@@ -16,35 +16,35 @@ enum type_person {
 }
 
 model usuario {
-  id                       Int                      @id @default(autoincrement())
-  uuid                     String                   @db.Char(36)
-  token_api                String?
-  senha                    String
-  email                    String                   @unique
-  telefone                 String?
-  is_whatsapp              Boolean?
-  cep                      String?
-  endereco                 String?
-  numero                   String?
-  complemento              String?
-  tema                     String?
-  cpf                      String?                  @unique
-  cnpj                     String?                  @unique
-  situacao                 Boolean                  @default(true)
-  created_at               DateTime                 @default(now())
-  deleted_at               DateTime?
-  updated_at               DateTime                 @updatedAt
-  data_nascimento          DateTime?
-  nome                     String
-  funcao                   String?
-  usuario_foto             String?
-  tipo_pessoa              type_person              @default(EMPLOYEE)
-  tipo_sistemas            usuario_tipo_sistema[]
-  avaliacoes               avaliacao[]
-  dias_trabalhados         dia_trabalhado[]
+  id                     Int                      @id @default(autoincrement())
+  uuid                   String                   @db.Char(36)
+  token_api              String?
+  senha                  String
+  email                  String                   @unique
+  telefone               String?
+  is_whatsapp            Boolean?
+  cep                    String?
+  endereco               String?
+  numero                 String?
+  complemento            String?
+  tema                   String?
+  cpf                    String?                  @unique
+  cnpj                   String?                  @unique
+  situacao               Boolean                  @default(true)
+  created_at             DateTime                 @default(now())
+  deleted_at             DateTime?
+  updated_at             DateTime                 @updatedAt
+  data_nascimento        DateTime?
+  nome                   String
+  funcao                 String?
+  usuario_foto           String?
+  tipo_pessoa            type_person              @default(EMPLOYEE)
+  tipo_sistemas          usuario_tipo_sistema[]
+  avaliacoes             avaliacao[]
+  dias_trabalhados       dia_trabalhado[]
   dia_trabalhado_estoque dia_trabalhado_estoque[]
-  vendas                   venda[]
-  metas                    Meta[]                   @relation("UsuarioMetas") // Relacionamento com metas
+  vendas                 venda[]
+  metas                  Meta[]                   @relation("UsuarioMetas") // Relacionamento com metas
 }
 
 model usuario_tipo_sistema {

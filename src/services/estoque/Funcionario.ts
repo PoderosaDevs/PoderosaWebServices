@@ -41,7 +41,8 @@ class FuncionarioService {
         }
       }
     });
-    return usuarios; // Retorna o array diretamente, sem encapsular em um objeto
+
+    return usuarios; 
   }
 
   async getByID(id: number) {
