@@ -41,7 +41,7 @@ model usuario {
   tipo_pessoa            type_person              @default(EMPLOYEE)
   tipo_sistemas          usuario_tipo_sistema[]
   avaliacoes             avaliacao[]
-  dias_trabalhados       dia_trabalhado[]
+  dia_trabalhado         dia_trabalhado[]
   dia_trabalhado_estoque dia_trabalhado_estoque[]
   vendas                 venda[]
   metas                  Meta[]                   @relation("UsuarioMetas") // Relacionamento com metas

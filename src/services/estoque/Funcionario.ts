@@ -28,6 +28,7 @@ class FuncionarioService {
     const usuarios = await prisma.usuario.findMany({
       include: {
         dia_trabalhado_estoque: true
+        
       },
       where: {
         situacao: true,
