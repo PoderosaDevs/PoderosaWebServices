@@ -28,7 +28,6 @@ class FuncionarioService {
     const usuarios = await prisma.usuario.findMany({
       include: {
         dia_trabalhado_estoque: true
-        
       },
       where: {
         situacao: true,
@@ -46,6 +45,7 @@ class FuncionarioService {
     return usuarios; 
   }
 
+
   async getByID(id: number) {
     const user = await prisma.usuario.findUnique({
       where: { id },
@@ -53,27 +53,29 @@ class FuncionarioService {
         tipo_sistemas: {
           where: {
             tipo_sistema: {
-              nome: 'ESTOQUE'
+              nome: 'ESTOQUE'  // Filtra os tipos de sistema para trazer apenas os de nome 'ESTOQUE'
             }
           }
-        }
+        },
+        dia_trabalhado_estoque: true, // Inclui o campo dia_trabalhado_estoque
       }
     });
-
+  
     if (!user) {
       throw new GraphQLError("Usuário não encontrado.");
     }
-
+  
     if (user.tipo_pessoa !== 'EMPLOYEE') {
       throw new GraphQLError("Usuário não é um funcionário.");
     }
-
+  
     if (user.tipo_sistemas.length === 0) {
       throw new GraphQLError("Usuário não está associado ao sistema 'ESTOQUE'.");
     }
-
-    return { result: user };
+  
+    return user ;
   }
+  
 
   async create(data: FuncionarioInput) {
     // Valida se o email já está cadastrado

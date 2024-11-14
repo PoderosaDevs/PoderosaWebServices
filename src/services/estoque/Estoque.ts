@@ -40,22 +40,49 @@ class DiaTrabalhadoEstoqueServices {
     realizados: number;
     horario_entrada: string;
     horario_saida: string;
-    usuarioId: number; // agora é obrigatório
+    usuarioId: number; // obrigatório
     data_trabalho: Date; // Adicionando data_trabalho como um campo
   }) {
-    // Verifica se já existe um registro com a mesma data_trabalho
-    const existingRecord = await prisma.dia_trabalhado_estoque.findFirst({
+    // Verifica se o usuário faz parte de uma dupla
+    const dupla = await prisma.dupla_estoque.findFirst({
       where: {
-        usuarioId: data.usuarioId,
-        data_trabalho: data.data_trabalho, // Usando data_trabalho do parâmetro
+        OR: [
+          { usuarioId1: data.usuarioId },
+          { usuarioId2: data.usuarioId },
+        ],
       },
     });
-
-    if (existingRecord) {
-      throw new Error('Já existe um registro de dia trabalhado para a mesma data.');
+  
+    // Se o usuário não estiver em uma dupla, não cria nada
+    if (!dupla) {
+      throw new Error('Usuário não está associado a uma dupla.');
     }
-
-    return await prisma.dia_trabalhado_estoque.create({
+  
+    // Identifica o ID do parceiro na dupla
+    const parceiroId = dupla.usuarioId1 === data.usuarioId ? dupla.usuarioId2 : dupla.usuarioId1;
+  
+    // Verifica se já existe um registro com a mesma data_trabalho para o usuário
+    const existingRecordUser = await prisma.dia_trabalhado_estoque.findFirst({
+      where: {
+        usuarioId: data.usuarioId,
+        data_trabalho: data.data_trabalho,
+      },
+    });
+  
+    if (existingRecordUser) {
+      throw new Error('Já existe um registro de dia trabalhado para o usuário na mesma data.');
+    }
+  
+    // Verifica se já existe um registro com a mesma data_trabalho para o parceiro
+    const existingRecordPartner = await prisma.dia_trabalhado_estoque.findFirst({
+      where: {
+        usuarioId: parceiroId,
+        data_trabalho: data.data_trabalho,
+      },
+    });
+  
+    // Cria o registro de dia_trabalhado_estoque para o usuário
+    const diaTrabalhado = await prisma.dia_trabalhado_estoque.create({
       data: {
         pedidos: data.pedidos,
         realizados: data.realizados,
@@ -66,11 +93,31 @@ class DiaTrabalhadoEstoqueServices {
             id: data.usuarioId,
           },
         },
-        data_trabalho: data.data_trabalho, // Utilizando a data recebida
+        data_trabalho: data.data_trabalho,
       },
     });
+  
+    // Se o parceiro não tiver um registro para o mesmo dia, cria um registro para ele
+    if (!existingRecordPartner) {
+      await prisma.dia_trabalhado_estoque.create({
+        data: {
+          pedidos: data.pedidos,
+          realizados: data.realizados,
+          horario_entrada: data.horario_entrada,
+          horario_saida: data.horario_saida,
+          usuario: {
+            connect: {
+              id: parceiroId,
+            },
+          },
+          data_trabalho: data.data_trabalho,
+        },
+      });
+    }
+  
+    return diaTrabalhado;
   }
-
+  
 
   // Buscar todos os registros de dia trabalhado
   async get(usuarioId: number, startDate?: Date, endDate?: Date) {

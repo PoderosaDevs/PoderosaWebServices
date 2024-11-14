@@ -12,7 +12,8 @@ import {
   Marca,
   Meta,
   StockDiaTrabalhadoFuncionario,
-  StockFuncionario
+  StockFuncionario,
+  StockDuplaEstoqueFuncionario
 } from './resolvers';
 
 export const createSchema = async () => {
@@ -28,7 +29,8 @@ export const createSchema = async () => {
       Marca,
       Meta,
       StockDiaTrabalhadoFuncionario,
-      StockFuncionario
+      StockFuncionario,
+      StockDuplaEstoqueFuncionario
     ],
     scalarsMap: [
       { type: Date, scalar: DateScalar },

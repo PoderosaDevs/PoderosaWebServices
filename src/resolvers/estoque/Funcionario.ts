@@ -11,4 +11,12 @@ export class FuncionarioResolver {
     const employees = await FuncionarioService.getStock(); // Espera receber diretamente a lista de usuários
     return employees; // Retorna a lista diretamente
   }
+
+  @Query(() => FuncionarioModel)
+  async GetFuncionarioEstoqueByID(
+    @Arg('usuarioId', () => Number) usuarioId: number // Define o argumento usuarioId como um número
+  ) {
+    const employee = await FuncionarioService.getByID(usuarioId); // Passa o usuarioId para o serviço
+    return employee
+  }
 }
