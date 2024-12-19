@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { DiaTrabalhadoEstoqueInputUpdate } from '../../inputs/estoque/DiaTrabalho';
 
 const prisma = new PrismaClient();
 
@@ -64,7 +65,7 @@ class DiaTrabalhadoEstoqueServices {
     // Verifica se já existe um registro com a mesma data_trabalho para o usuário
     const existingRecordUser = await prisma.dia_trabalhado_estoque.findFirst({
       where: {
-        usuarioId: data.usuarioId,
+        usuario_id: data.usuarioId,
         data_trabalho: data.data_trabalho,
       },
     });
@@ -76,7 +77,7 @@ class DiaTrabalhadoEstoqueServices {
     // Verifica se já existe um registro com a mesma data_trabalho para o parceiro
     const existingRecordPartner = await prisma.dia_trabalhado_estoque.findFirst({
       where: {
-        usuarioId: parceiroId,
+        usuario_id: parceiroId,
         data_trabalho: data.data_trabalho,
       },
     });
@@ -164,23 +165,15 @@ class DiaTrabalhadoEstoqueServices {
   }
 
   // Atualizar um registro de dia trabalhado
-  async update(id: number, data: {
-    pedidos?: number;
-    realizados?: number;
-    horario_entrada?: string;
-    horario_saida?: string;
-    usuarioId?: number;
-  }) {
+  async update(data: DiaTrabalhadoEstoqueInputUpdate ) {
     return await prisma.dia_trabalhado_estoque.update({
-      where: { id },
+      where: { id: data.id},
       data: {
+        data_trabalho: data.data_trabalho,
         pedidos: data.pedidos,
         realizados: data.realizados,
         horario_entrada: data.horario_entrada,
         horario_saida: data.horario_saida,
-        usuario: data.usuarioId ? {
-          connect: { id: data.usuarioId },
-        } : undefined,
       },
     });
   }

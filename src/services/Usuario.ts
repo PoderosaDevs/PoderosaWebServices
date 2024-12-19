@@ -1,6 +1,6 @@
 // src/services/UsuarioService.ts
 import { prisma } from '../database';
-import { v4 } from "uuid";
+import { v4 } from "uuid";  
 import { UsuarioInput } from '../inputs/Usuario';
 import { EmailValidation } from '../snippets/ValidationEmail';
 import { HashPassword } from '../snippets/ValidationPassword';

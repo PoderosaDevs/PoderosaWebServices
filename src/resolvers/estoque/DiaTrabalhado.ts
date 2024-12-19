@@ -1,7 +1,7 @@
 import { Resolver, Query, Mutation, Arg } from "type-graphql";
 import DiaTrabalhadoEstoqueServices from '../../services/estoque/Estoque';
 import { DiaTrabalhadoEstoqueModel } from "../../models/estoque/DiaTrabalho";
-import { DiaTrabalhadoEstoqueInput } from "../../inputs/estoque/DiaTrabalho";
+import { DiaTrabalhadoEstoqueInput, DiaTrabalhadoEstoqueInputUpdate } from "../../inputs/estoque/DiaTrabalho";
 
 @Resolver()
 export class DiaTrabalhadoEstoqueResolver {
@@ -38,8 +38,8 @@ export class DiaTrabalhadoEstoqueResolver {
   }
 
   @Mutation(() => DiaTrabalhadoEstoqueModel, { nullable: true })
-  async PutDiaTrabalhadoEstoque(@Arg("id") id: number, @Arg("data") data: DiaTrabalhadoEstoqueInput) {
-    return await DiaTrabalhadoEstoqueServices.update(id, data);
+  async PutDiaTrabalhadoEstoque(@Arg("data") data: DiaTrabalhadoEstoqueInputUpdate) {
+    return await DiaTrabalhadoEstoqueServices.update(data);
   }
 
   @Mutation(() => DiaTrabalhadoEstoqueModel, { nullable: true })

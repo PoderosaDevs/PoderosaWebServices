@@ -8,7 +8,7 @@ export class FuncionarioResolver {
 
   @Query(() => [FuncionarioModel])
   async GetFuncionariosEstoque() {
-    const employees = await FuncionarioService.getStock(); // Espera receber diretamente a lista de usuários
+    const employees = await FuncionarioService.getStock(); 
     return employees; // Retorna a lista diretamente
   }
 

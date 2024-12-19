@@ -27,7 +27,8 @@ class FuncionarioService {
   async getStock() {
     const usuarios = await prisma.usuario.findMany({
       include: {
-        dia_trabalhado_estoque: true
+        dia_trabalhado_estoque: true,
+        observacao: true
       },
       where: {
         situacao: true,

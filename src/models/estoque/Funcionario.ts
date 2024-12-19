@@ -2,6 +2,7 @@ import { ObjectType, Field, ID } from 'type-graphql';
 import { TypePerson } from '../../enums/TypePerson';
 import { DiaTrabalhadoEstoqueModel } from './DiaTrabalho';
 import { TipoSistemaModel } from '../TipoSistema';
+import { ObservacaoModel } from './Observacao';
 
 @ObjectType()
 export class FuncionarioModel {
@@ -78,6 +79,9 @@ export class FuncionarioModel {
   @Field(() => [TipoSistemaModel], { nullable: true })
   tipo_sistema?: TipoSistemaModel[];
 
-  @Field(() => [DiaTrabalhadoEstoqueModel], { nullable: true }) // Campo para dias trabalhados
-  dia_trabalhado_estoque?: DiaTrabalhadoEstoqueModel[]; // Relacionamento com os dias trabalhados
+  @Field(() => [DiaTrabalhadoEstoqueModel], { nullable: true })
+  dia_trabalhado_estoque?: DiaTrabalhadoEstoqueModel[]; 
+
+  @Field(() => [ObservacaoModel], { nullable: true }) 
+  Observacao?: ObservacaoModel[]; 
 }

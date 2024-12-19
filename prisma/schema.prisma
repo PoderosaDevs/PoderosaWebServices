@@ -39,6 +39,7 @@ model usuario {
   tipo_sistemas          usuario_tipo_sistema[]
   vendas                 venda[]
   metas                  Meta[]                   @relation("UsuarioMetas")
+  observacao             observacao[]
 }
 
 model dupla_estoque {
@@ -91,9 +92,9 @@ model dia_trabalhado_estoque {
   realizados      Int
   horario_entrada String
   horario_saida   String
-  usuarioId       Int?
+  usuario_id       Int?
   data_trabalho   DateTime @default(now())
-  usuario         usuario? @relation(fields: [usuarioId], references: [id])
+  usuario         usuario? @relation(fields: [usuario_id], references: [id])
 }
 
 model venda {
@@ -266,6 +267,16 @@ model MetaEtapa {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
   meta       Meta     @relation(fields: [meta_id], references: [id])
+}
+
+model observacao {
+  id          Int       @id @default(autoincrement())
+  title       String
+  description String
+  data        DateTime?
+
+  usuario_id Int
+  usuario    usuario @relation(fields: [usuario_id], references: [id])
 }
 
 enum type_person {
