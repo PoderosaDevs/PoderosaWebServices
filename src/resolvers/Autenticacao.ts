@@ -63,7 +63,7 @@ export class AutenticacaoResolver {
         ip: address(),
       },
       authSecret,
-      { expiresIn: "1m" }
+      { expiresIn: "2d" }
     );
 
 
