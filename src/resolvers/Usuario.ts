@@ -4,6 +4,7 @@ import { UsuarioInput } from "../inputs/Usuario";
 import UsuarioService from "../services/Usuario";
 import { TypeSystem } from "../enums/TypeSystem";
 import { TypePerson } from "../enums/TypePerson";
+import { type_person } from "@prisma/client";
 
 @Resolver(() => UsuarioModel)
 export class UsuarioResolver {
@@ -23,33 +24,36 @@ export class UsuarioResolver {
   }
 
   @Mutation(() => UsuarioModel)
-  async SetAdmin(
-    @Arg("data") data: UsuarioInput,
-  ) {
+  async SetAdmin(@Arg("data") data: UsuarioInput) {
     const usuario = await UsuarioService.create(data, "ADMIN");
 
     return usuario;
   }
 
   @Mutation(() => UsuarioModel)
-  async SetVendedor(
-    @Arg("data") data: UsuarioInput,
-  ) {
+  async SetVendedor(@Arg("data") data: UsuarioInput) {
     const usuario = await UsuarioService.create(data, "EMPLOYEE");
 
     return usuario;
   }
 
   @Mutation(() => UsuarioModel, { nullable: true })
-  async PutUsuario(@Arg("id") id: number, @Arg("data") data: UsuarioInput) {
-    const usuario = await UsuarioService.update(id, data);
+  async PutUsuario(
+    @Arg("id") id: number,
+    @Arg("Data") data: UsuarioInput,
+    @Arg("TipoPessoa") type_person: type_person
+  ) {
+    const usuario = await UsuarioService.update(id, data, type_person);
 
     return usuario;
   }
 
   @Mutation(() => UsuarioModel, { nullable: true })
-  async DeleteUsuario(@Arg("id") id: number) {
-    const usuario = UsuarioService.delete(id);
+  async DeleteUsuario(
+    @Arg("id") id: number,
+    @Arg("TipoPessoa") type_person: type_person
+  ) {
+    const usuario = UsuarioService.delete(id, type_person);
 
     return usuario;
   }
