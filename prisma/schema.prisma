@@ -13,15 +13,9 @@ model usuario {
   token_api              String?
   senha                  String
   email                  String                   @unique
-  telefone               String?
-  is_whatsapp            Boolean?
-  cep                    String?
-  endereco               String?
-  numero                 String?
   complemento            String?
   tema                   String?
   cpf                    String?                  @unique
-  cnpj                   String?                  @unique
   situacao               Boolean                  @default(true)
   created_at             DateTime                 @default(now())
   deleted_at             DateTime?
@@ -31,44 +25,10 @@ model usuario {
   funcao                 String?
   usuario_foto           String?
   tipo_pessoa            type_person              @default(EMPLOYEE)
-  avaliacoes             avaliacao[]
   dia_trabalhado         dia_trabalhado[]
-  dia_trabalhado_estoque dia_trabalhado_estoque[]
-  dupla_estoque1         dupla_estoque[]          @relation("UsuarioDupla1")
-  dupla_estoque2         dupla_estoque[]          @relation("UsuarioDupla2")
-  tipo_sistemas          usuario_tipo_sistema[]
   vendas                 venda[]
   metas                  Meta[]                   @relation("UsuarioMetas")
   observacao             observacao[]
-}
-
-model dupla_estoque {
-  id              Int      @id @default(autoincrement())
-  usuarioId1      Int
-  usuarioId2      Int
-  data_associacao DateTime @default(now())
-  usuario1        usuario  @relation("UsuarioDupla1", fields: [usuarioId1], references: [id])
-  usuario2        usuario  @relation("UsuarioDupla2", fields: [usuarioId2], references: [id])
-
-  @@unique([usuarioId1, usuarioId2])
-}
-
-model usuario_tipo_sistema {
-  id              Int          @id @default(autoincrement())
-  id_usuario      Int
-  id_tipo_sistema Int
-  tipo_sistema    tipo_sistema @relation(fields: [id_tipo_sistema], references: [id])
-  usuario         usuario      @relation(fields: [id_usuario], references: [id])
-
-  @@unique([id_usuario, id_tipo_sistema])
-}
-
-model tipo_sistema {
-  id                  Int                    @id @default(autoincrement())
-  nome                String                 @unique
-  linha_tipo_sistemas linha_tipo_sistema[]
-  produtos            produto[]
-  usuarios            usuario_tipo_sistema[]
 }
 
 model dia_trabalhado {
@@ -84,17 +44,6 @@ model dia_trabalhado {
   usuario         usuario  @relation(fields: [user_id], references: [id])
 
   @@index([user_id, data])
-}
-
-model dia_trabalhado_estoque {
-  id              Int      @id @default(autoincrement())
-  pedidos         Int
-  realizados      Int
-  horario_entrada String
-  horario_saida   String
-  usuario_id       Int?
-  data_trabalho   DateTime @default(now())
-  usuario         usuario? @relation(fields: [usuario_id], references: [id])
 }
 
 model venda {
@@ -124,47 +73,21 @@ model venda_detalhe {
 }
 
 model produto {
-  id                Int             @id @default(autoincrement())
-  codigo            String          @unique
-  nome              String
-  descricao         String?
-  estoque           Int?
-  id_fornecedor     String?
-  id_marca          Int?
-  preco             Float?
-  formato           String?
-  data_expiracao    DateTime?
-  is_frete_gratis   Boolean?
-  pontos            Int?
-  peso_liquido      Float?
-  peso_bruto        Float?
-  largura           Float?
-  altura            Float?
-  profundidade      Float?
-  volumes           Int?
-  itens_por_caixa   Int?
-  unidade_de_medida String?
-  situacao          Boolean
-  imagem            String?
-  id_tipo_sistema   Int?
-  avaliacoes        avaliacao[]
-  linha_produto     linha_produto[]
-  marca             marca?          @relation(fields: [id_marca], references: [id])
-  tipo_sistema      tipo_sistema?   @relation(fields: [id_tipo_sistema], references: [id])
-  venda_detalhe     venda_detalhe[]
-  categorias        categoria[]     @relation("categoria_to_produto")
-  linhas            linha[]         @relation("linha_produto")
-}
-
-model avaliacao {
-  id         Int      @id @default(autoincrement())
-  nota       Int
-  comentario String?
-  id_produto Int
-  id_usuario Int
-  created_at DateTime @default(now())
-  produto    produto  @relation(fields: [id_produto], references: [id])
-  usuario    usuario  @relation(fields: [id_usuario], references: [id])
+  id              Int             @id @default(autoincrement())
+  codigo          String          @unique
+  nome            String
+  descricao       String?
+  id_marca        Int?
+  preco           Float?
+  pontos          Int?
+  situacao        Boolean
+  imagem          String?
+  id_tipo_sistema Int?
+  linha_produto   linha_produto[]
+  marca           marca?          @relation(fields: [id_marca], references: [id])
+  venda_detalhe   venda_detalhe[]
+  categorias      categoria[]     @relation("categoria_to_produto")
+  linhas          linha[]         @relation("linha_produto")
 }
 
 model categoria {
@@ -176,21 +99,10 @@ model categoria {
 model marca {
   id       Int       @id @default(autoincrement())
   nome     String    @unique
+  cor      String
   metas    Meta[]
   linhas   linha[]
   produtos produto[]
-}
-
-model pedido {
-  id                   Int      @id @default(autoincrement())
-  numero               Int
-  data                 DateTime
-  data_prevista        DateTime
-  total_produtos       Float
-  total                Float
-  ordem_compra         String
-  observacoes          String
-  observacoes_internas String
 }
 
 model mail {
@@ -205,25 +117,14 @@ model mail {
 }
 
 model linha {
-  id            Int                  @id @default(autoincrement())
-  nome          String               @unique
+  id            Int             @id @default(autoincrement())
+  nome          String          @unique
   marcaId       Int
-  marca         marca                @relation(fields: [marcaId], references: [id])
+  marca         marca           @relation(fields: [marcaId], references: [id])
   linha_produto linha_produto[]
-  tipo_sistemas linha_tipo_sistema[]
-  produtos      produto[]            @relation("linha_produto")
+  produtos      produto[]       @relation("linha_produto")
 
   @@index([nome])
-}
-
-model linha_tipo_sistema {
-  id              Int          @id @default(autoincrement())
-  id_linha        Int
-  id_tipo_sistema Int
-  linha           linha        @relation(fields: [id_linha], references: [id])
-  tipo_sistema    tipo_sistema @relation(fields: [id_tipo_sistema], references: [id])
-
-  @@unique([id_linha, id_tipo_sistema])
 }
 
 model linha_produto {

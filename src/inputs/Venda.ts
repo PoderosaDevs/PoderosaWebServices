@@ -1,5 +1,16 @@
 import { InputType, Field, Int, Float } from 'type-graphql';
-import { VendaDetalheInput } from './VendaDetalhe'; // Importa o input de detalhes da venda
+
+@InputType()
+export class VendaDetalheInput {
+  @Field(() => Int, { nullable: true })
+  id?: number;
+
+  @Field(() => Int)
+  produtoId!: number;
+
+  @Field(() => Int)
+  quantidade!: number;
+}
 
 @InputType()
 export class VendaInput {

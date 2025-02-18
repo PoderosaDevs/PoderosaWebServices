@@ -1,6 +1,6 @@
 import { ObjectType, Field, ID, Int } from 'type-graphql';
 import { TypePerson } from '../enums/TypePerson';
-import { TipoSistemaModel } from './TipoSistema'; // Supondo que você tenha um modelo TipoSistema
+import { PaginationInfo } from './Utils';
 
 @ObjectType()
 export class UsuarioModel {
@@ -72,8 +72,13 @@ export class UsuarioModel {
 
   @Field()
   updated_at!: Date;
+}
 
-  // Adicionando o relacionamento com Tipo_Sistema
-  @Field(() => [TipoSistemaModel], { nullable: true })
-  tipo_sistema?: TipoSistemaModel[];
+@ObjectType()
+export class UsuarioResult {
+  @Field(() => [UsuarioModel])
+  result!: UsuarioModel[];
+
+  @Field(() => PaginationInfo)
+  pageInfo!: PaginationInfo;
 }

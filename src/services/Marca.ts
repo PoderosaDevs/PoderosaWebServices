@@ -13,8 +13,8 @@ class MarcaServices {
     return prisma.marca.findUnique({ where: { id } });
   }
 
-  async create(nome: string) {
-    return prisma.marca.create({ data: { nome } });
+  async create(nome: string, cor: string) {
+    return prisma.marca.create({ data: { nome, cor } });
   }
 
   async associationProdutos(linhaId: number, produtoIds: number[]) {
@@ -29,10 +29,10 @@ class MarcaServices {
   }
 
 
-  async update(id: number, nome: string) {
+  async update(id: number, nome: string, cor: string) {
     return prisma.marca.update({
       where: { id },
-      data: { nome },
+      data: { nome, cor },
     });
   }
 

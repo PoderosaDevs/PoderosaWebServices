@@ -1,7 +1,5 @@
 import { ObjectType, Field, Int } from "type-graphql";
 import { MarcaModel } from "./Marca";
-import { ProdutoModel } from "./Produto";
-import { TipoSistemaModel } from "./TipoSistema";
 import { PaginationInfo } from "./Utils";
 
 @ObjectType()
@@ -20,9 +18,6 @@ export class LinhaModel {
 
   @Field(() => String)
   nome!: string;
-
-  @Field(() => [TipoSistemaModel])
-  tipo_sistemas!: TipoSistemaModel[];
 
   @Field(() => [ProdutoSimpleModel])
   produtos!: ProdutoSimpleModel[];

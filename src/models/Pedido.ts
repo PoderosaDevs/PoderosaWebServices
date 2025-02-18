@@ -1,5 +1,6 @@
 // src/models/Pedido.ts
 import { ObjectType, Field, ID, Float, Int } from 'type-graphql';
+import { PaginationInfo } from './Utils';
 
 @ObjectType()
 export class PedidoModel {
@@ -29,4 +30,13 @@ export class PedidoModel {
 
   @Field()
   observacoesInternas!: string;
+}
+
+@ObjectType()
+export class PedidoResult {
+  @Field(() => [PedidoModel])
+  result!: PedidoModel[];
+
+  @Field(() => PaginationInfo)
+  pageInfo!: PaginationInfo;
 }

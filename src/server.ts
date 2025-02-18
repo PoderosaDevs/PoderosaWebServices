@@ -5,7 +5,6 @@ import express from 'express';
 import { ApolloServer } from 'apollo-server-express';
 import { createSchema } from './schema'; // Ajuste o caminho conforme necessário
 import { prisma } from './database';
-import { ApolloServerPluginLandingPageGraphQLPlayground } from 'apollo-server-core';
 import cors from 'cors'; // Importa o CORS
 
 const app = express();

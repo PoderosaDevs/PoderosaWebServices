@@ -17,8 +17,11 @@ export class MarcaResolver {
   }
 
   @Mutation(() => MarcaModel)
-  async SetMarca(@Arg("nome") nome: string) {
-    return MarcaService.create(nome);
+  async SetMarca(
+    @Arg("nome") nome: string,
+    @Arg("cor") cor: string
+  ) {
+    return MarcaService.create(nome, cor);
   }
 
   @Mutation(() => MarcaModel)
@@ -38,10 +41,12 @@ export class MarcaResolver {
   @Mutation(() => MarcaModel, { nullable: true })
   async PutMarca(
     @Arg("id", () => Int) id: number,
-    @Arg("nome") nome: string
+    @Arg("nome") nome: string,
+    @Arg("cor") cor: string
+
   ) {
     try {
-      return await MarcaService.update(id, nome);
+      return await MarcaService.update(id, nome, cor);
     } catch {
       return null;
     }

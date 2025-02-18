@@ -35,14 +35,6 @@ export class AutenticacaoResolver {
       throw new Error('AUTH_SECRET is not defined in environment variables.');
     }
 
-    // Obtenha os tipos de sistema associados ao usuário
-    const tiposSistemas = await prisma.usuario_tipo_sistema.findMany({
-      where: { id_usuario: DataUser.data.id },
-      include: { tipo_sistema: true }
-    });
-
-    const systemNames = tiposSistemas.map(ts => ts.tipo_sistema.nome);
-
 
     DataUser.data.token_api = jwt.sign(
       {
@@ -50,15 +42,9 @@ export class AutenticacaoResolver {
         email: DataUser.data.email,
         funcao: DataUser.data.funcao,
         tipo_usuario: DataUser.data.tipo_pessoa,
-        tipo_sistemas: systemNames,
         complemento: DataUser.data.complemento,
         cpf: DataUser.data.cpf,
         data_nascimento: DataUser.data.data_nascimento,
-        endereco: DataUser.data.endereco,
-        is_whatsapp: DataUser.data.is_whatsapp,
-        numero: DataUser.data.numero,
-        telefone: DataUser.data.telefone,
-        cep: DataUser.data.cep,
         id: DataUser.data.id,
         ip: address(),
       },
@@ -70,7 +56,6 @@ export class AutenticacaoResolver {
     return {
       ...DataUser.data,
       tipo_pessoa: DataUser.data.tipo_pessoa,
-      tipos_sistemas: systemNames
     };
   }
 

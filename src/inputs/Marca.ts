@@ -5,6 +5,9 @@ import { InputType, Field, Int } from 'type-graphql';
 export class MarcaCreateInput {
   @Field()
   nome!: string;
+
+  @Field()
+  cor!: string;
 }
 
 // Input para atualizar uma Marca
@@ -12,6 +15,9 @@ export class MarcaCreateInput {
 export class MarcaUpdateInput {
   @Field({ nullable: true })
   nome?: string;
+
+  @Field()
+  cor?: string;
 }
 
 // Input para associar Produtos a uma Linha

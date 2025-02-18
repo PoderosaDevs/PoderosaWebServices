@@ -1,7 +1,8 @@
 import { Resolver, Query, Mutation, Arg } from "type-graphql";
-import { VendaModel } from "../../models/vendas/Vendas";
-import VendaServices from "../../services/vendas/Vendas";
-import { VendaInput } from "../../inputs/vendas/Vendas";
+import { VendaModel } from "../models/Venda";
+import VendaServices from "../services/Venda"
+import { VendaInput } from "../inputs/Venda";
+
 @Resolver()
 export class VendaResolver {
   @Query(() => [VendaModel])

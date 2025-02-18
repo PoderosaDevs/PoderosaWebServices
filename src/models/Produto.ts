@@ -1,7 +1,6 @@
 import { ObjectType, Field, ID, Float, Int } from 'type-graphql';
 import { CategoriaModel } from './Categoria'; // Ajuste o caminho conforme necessário
 import { MarcaModel } from './Marca'; // Ajuste o caminho conforme necessário
-import { TipoSistemaModel } from './TipoSistema'; // Ajuste o caminho conforme necessário
 import { PaginationInfo } from "./Utils";
 
 @ObjectType()
@@ -40,33 +39,6 @@ export class ProdutoModel {
   data_expiracao?: Date;
 
   @Field()
-  is_frete_gratis!: boolean;
-
-  @Field(() => Float, { nullable: true })
-  peso_liquido?: number;
-
-  @Field(() => Float, { nullable: true })
-  peso_bruto?: number;
-
-  @Field(() => Float, { nullable: true })
-  largura?: number;
-
-  @Field(() => Float, { nullable: true })
-  altura?: number;
-
-  @Field(() => Float, { nullable: true })
-  profundidade?: number;
-
-  @Field(() => Int, { nullable: true })
-  volumes?: number;
-
-  @Field(() => Int, { nullable: true })
-  itens_por_caixa?: number;
-
-  @Field({ nullable: true })
-  unidade_de_medida?: string;
-
-  @Field()
   situacao!: boolean;
 
   @Field({ nullable: true })
@@ -78,8 +50,6 @@ export class ProdutoModel {
   @Field(() => MarcaModel, { nullable: true })
   marca?: MarcaModel;
 
-  @Field(() => TipoSistemaModel, { nullable: true })
-  tipo_sistema?: TipoSistemaModel;
 }
 
 @ObjectType()

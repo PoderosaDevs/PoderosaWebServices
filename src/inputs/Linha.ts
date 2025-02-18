@@ -9,9 +9,6 @@ export class LinhaCreateInput {
   @Field(() => Int)
   marcaId!: number;
 
-  @Field(() => String, { nullable: true }) // Sistema é identificado por uma string de nome
-  tipo_sistemas_nomes?: string[];
-
   @Field(() => [Int])
   produtosIds?: number[]; // IDs dos produtos a serem associados
 }

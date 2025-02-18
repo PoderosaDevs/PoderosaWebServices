@@ -1,13 +1,17 @@
 import { Resolver, Query, Mutation, Arg, Int } from "type-graphql";
 import LinhaServices from "../services/Linha"; // Ajuste o caminho conforme necessário
-import { LinhaModel } from "../models/Linha";
+import { LinhaModel, LinhaResult } from "../models/Linha";
 import { LinhaCreateInput, LinhaUpdateInput } from "../inputs/Linha";
+import { Pagination } from "../inputs/Utils";
 
 @Resolver(() => LinhaModel)
 export class LinhaResolver {
-  @Query(() => [LinhaModel])
-  async GetLinhas() {
-    const linhas = await LinhaServices.get();
+  @Query(() => [LinhaResult])
+  async GetLinhas(
+    @Arg("pagination", () => Pagination, { nullable: true })
+    pagination?: Pagination
+  ): Promise<LinhaResult> {
+    const linhas = await LinhaServices.get(pagination);
     return linhas;
   }
 

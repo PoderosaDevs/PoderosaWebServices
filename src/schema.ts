@@ -3,36 +3,24 @@ import { buildSchema } from 'type-graphql';
 import { DateScalar } from './scalars/DateScalar'; // Ajuste o caminho conforme necessário
 import {
   Autenticacao,
-  Avaliacao,
   Produto,
   Usuario,
-  Venda,
-  Loja,
   Linha,
+  Loja,
   Marca,
-  Meta,
-  StockDiaTrabalhadoFuncionario,
-  StockFuncionario,
-  StockDuplaEstoqueFuncionario,
-  StockObservacaoFuncionario
+  Venda
 } from './resolvers';
 
 export const createSchema = async () => {
   return buildSchema({
     resolvers: [
       Autenticacao,
-      Avaliacao,
       Produto,
       Usuario,
-      Venda,
-      Loja,
       Linha,
+      Loja,
       Marca,
-      Meta,
-      StockDiaTrabalhadoFuncionario,
-      StockFuncionario,
-      StockDuplaEstoqueFuncionario,
-      StockObservacaoFuncionario
+      Venda
     ],
     scalarsMap: [
       { type: Date, scalar: DateScalar },

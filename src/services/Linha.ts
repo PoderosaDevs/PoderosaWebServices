@@ -1,21 +1,41 @@
-import { PrismaClient } from '@prisma/client';
-import { LinhaCreateInput, LinhaUpdateInput } from '../inputs/Linha';
-import { GraphQLError } from 'graphql';
+import { PrismaClient } from "@prisma/client";
+import { LinhaCreateInput, LinhaUpdateInput } from "../inputs/Linha";
+import { GraphQLError } from "graphql";
+import { Pagination } from "../inputs/Utils";
+import { LinhaResult } from "../models/Linha";
+import getPageInfo from "../helpers/getPageInfo";
 
 const prisma = new PrismaClient();
 
 class LinhaServices {
   // Obter todas as linhas
-  async get() {
+  async get(pagination?: Pagination): Promise<LinhaResult> {
+    let pagina: number = 0;
+    let quantidade: number = 10;
+
+    if (pagination) {
+      pagina = pagination.pagina ?? 0;
+      quantidade = pagination.quantidade ?? 10;
+    }
+
     const linhas = await prisma.linha.findMany({
       include: {
-        tipo_sistemas: true,
         produtos: true,
         marca: true,
       },
+      skip: pagina * quantidade,
+      take: quantidade,
     });
 
-    return linhas;
+    if (linhas.length === 0) {
+      throw new Error(`Nenhum produto encontrado para os filtros aplicados.`);
+    }
+
+    const dataTotal = await prisma.produto.count();
+
+    const DataPageInfo = getPageInfo(dataTotal, pagina, quantidade);
+
+    return { result: linhas, pageInfo: DataPageInfo };
   }
 
   // Obter uma linha por ID
@@ -23,7 +43,6 @@ class LinhaServices {
     const linha = await prisma.linha.findUnique({
       where: { id },
       include: {
-        tipo_sistemas: true,
         produtos: true,
         marca: true,
       },
@@ -38,35 +57,14 @@ class LinhaServices {
 
   // Criar uma nova linha
   async create(data: LinhaCreateInput) {
-    const tiposSistemas = await prisma.tipo_sistema.findMany({
-      where: {
-        nome: {
-          in: data.tipo_sistemas_nomes || [],
-        },
-      },
-    });
-
-    if (tiposSistemas.length !== (data.tipo_sistemas_nomes?.length || 0)) {
-      throw new GraphQLError("Alguns tipos de sistema fornecidos são inválidos.");
-    }
-
-    const tipoSistemaIds = tiposSistemas.map(ts => ts.id);
-
     const produtosIds = data.produtosIds || [];
 
     const linha = await prisma.linha.create({
       data: {
         nome: data.nome,
         marcaId: data.marcaId,
-        tipo_sistemas: {
-          create: tipoSistemaIds.map(id => ({
-            tipo_sistema: {
-              connect: { id },
-            },
-          })),
-        },
         produtos: {
-          connect: produtosIds.map(id => ({ id })),
+          connect: produtosIds.map((id) => ({ id })),
         },
       },
     });
@@ -95,6 +93,5 @@ class LinhaServices {
     return linha;
   }
 }
-
 
 export default new LinhaServices();

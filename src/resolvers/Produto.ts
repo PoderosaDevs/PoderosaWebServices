@@ -9,17 +9,21 @@ import { Pagination } from "../inputs/Utils";
 export class ProdutoResolver {
   @Query(() => ProdutoResult)
   async GetProdutos(
-    @Arg("tipo_sistema", { nullable: true }) tipo_sistema?: string,
+    @Arg("nome", { nullable: true }) nome?: string,
     @Arg("marca", { nullable: true }) marca?: string,
     @Arg("categorias", () => [String], { nullable: true })
     categorias?: string[],
+    @Arg("pontos_min", { nullable: true }) pontos_min?: number,
+    @Arg("pontos_max", { nullable: true }) pontos_max?: number,
     @Arg("pagination", () => Pagination, { nullable: true })
     pagination?: Pagination
   ): Promise<ProdutoResult> {
     const produtos = await ProdutoService.get(
-      tipo_sistema,
+      nome,
       marca,
       categorias,
+      pontos_min,
+      pontos_max,
       pagination
     );
     return produtos; // Retorna o objeto ProdutoResult

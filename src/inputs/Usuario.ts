@@ -13,32 +13,14 @@ export class UsuarioInput {
   @Field()
   email!: string;
 
-  @Field()
-  telefone!: string;
-
-  @Field()
-  isWhatsapp!: boolean;
-
-  @Field({ nullable: true })
-  cep?: string;
-
-  @Field({ nullable: true })
-  endereco?: string;
-
-  @Field({ nullable: true })
-  numero?: string;
-
-  @Field({ nullable: true })
-  complemento?: string;
-
   @Field({ nullable: true })
   tema?: string;
 
   @Field({ nullable: true })
-  cpf?: string;
+  telefone?: string;
 
   @Field({ nullable: true })
-  cnpj?: string;
+  cpf?: string;
 
   @Field(() => DateScalar, { nullable: true })
   data_nascimento?: Date;
@@ -55,6 +37,4 @@ export class UsuarioInput {
   @Field(() => TypePerson, { nullable: true })
   tipo_pessoa?: TypePerson;
 
-  @Field(() => [String], { nullable: true })
-  tipo_sistemas_nomes?: string[]; // Nomes dos tipos de sistema
 }

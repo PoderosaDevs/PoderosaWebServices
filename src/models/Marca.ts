@@ -1,5 +1,6 @@
 import { ObjectType, Field, ID } from 'type-graphql';
 import { ProdutoModel } from './Produto';
+import { PaginationInfo } from './Utils';
 
 @ObjectType()
 export class MarcaModel {
@@ -9,6 +10,18 @@ export class MarcaModel {
   @Field()
   nome!: string;
 
+  @Field()
+  cor!: string;
+
   @Field(() => [ProdutoModel], { nullable: true })
   produtos?: ProdutoModel[];
+}
+
+@ObjectType()
+export class MarcaResult {
+  @Field(() => [MarcaModel])
+  result!: MarcaModel[];
+
+  @Field(() => PaginationInfo)
+  pageInfo!: PaginationInfo;
 }
