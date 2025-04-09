@@ -1,6 +1,8 @@
 import { PrismaClient } from "@prisma/client";
 import { GraphQLError } from "graphql";
 import { VendaDetalheInput, VendaInput } from "../inputs/Venda";
+import { endOfMonth, startOfMonth } from "date-fns";
+import { normalizarDataPara10h } from "../snippets/FormatDate";
 
 const prisma = new PrismaClient();
 
@@ -47,6 +49,56 @@ class VendaServices {
       throw new Error("Erro ao buscar vendas.");
     }
   }
+
+  async getStoresInsights(
+    startDate?: Date,
+    endDate?: Date,
+    pagina: number = 0,
+    quantidade: number = 10
+  ) {
+    // Se não houver datas, usa o mês atual
+    const inicio = startDate ? new Date(startDate) : startOfMonth(new Date());
+    const fim = endDate ? new Date(endDate) : endOfMonth(new Date());
+
+    // Buscar lojas com contagem de vendas
+    const lojas = await prisma.loja.findMany({
+      include: {
+        _count: {
+          select: {
+            vendas: {
+              where: {
+                data_venda: {
+                  gte: inicio,
+                  lte: fim,
+                },
+              },
+            },
+          },
+        },
+      },
+      skip: pagina * quantidade,
+      take: quantidade,
+    });
+
+    // Total de lojas para paginação
+    const totalLojas = await prisma.loja.count();
+
+    return {
+      result: lojas.map((loja) => ({
+        id: loja.id,
+        nome: loja.nome_fantasia,
+        total_vendas: loja._count.vendas,
+      })),
+      pageInfo: {
+        currentPage: pagina,
+        totalPages: Math.ceil(totalLojas / quantidade),
+        totalItems: totalLojas,
+        hasNextPage: pagina * quantidade + quantidade < totalLojas,
+        hasPreviousPage: pagina > 0,
+      },
+    };
+  }
+
   // Obtém uma venda por ID
   async getByID(id: number) {
     try {
@@ -90,10 +142,31 @@ class VendaServices {
     }
   }
 
-  async getByUserID(id: number) {
+  async getByUserID(id: number, data_mensal?: string) {
     try {
+      let dataFilter = {};
+
+      if (data_mensal) {
+        const [mes, ano] = data_mensal.split("/").map(Number);
+
+        const anoCompleto = 2000 + ano;
+
+        const startDate = new Date(anoCompleto, mes - 1, 1);
+        const endDate = new Date(anoCompleto, mes, 0, 23, 59, 59, 999);
+
+        dataFilter = {
+          data_venda: {
+            gte: startDate,
+            lte: endDate,
+          },
+        };
+      }
+
       const vendas = await prisma.venda.findMany({
-        where: { funcionario_id: id },
+        where: {
+          funcionario_id: id,
+          ...dataFilter,
+        },
         include: {
           venda_detalhe: {
             include: {
@@ -104,10 +177,7 @@ class VendaServices {
         },
       });
 
-      if (vendas.length === 0) {
-        throw new GraphQLError("Nenhuma venda encontrada para este usuário.");
-      }
-
+      // Remove o throw de erro se não encontrar vendas
       return vendas.map((venda) => ({
         id: venda.id,
         data_venda: venda.data_venda,
@@ -123,7 +193,7 @@ class VendaServices {
             nome: detail.produto.nome,
             imagem: detail.produto.imagem,
           },
-          quantidade: detail.quantidade, // Inclua a quantidade aqui
+          quantidade: detail.quantidade,
           pontos: detail.pontos,
         })),
       }));
@@ -135,7 +205,6 @@ class VendaServices {
 
   // Cria uma nova venda
   async create(data: VendaInput) {
-    // Verifica se o funcionário existe e está ativo
     const funcionario = await prisma.usuario.findUnique({
       where: { id: data.funcionarioId },
     });
@@ -144,24 +213,20 @@ class VendaServices {
       where: { id: data.lojaId },
     });
 
-    if (!loja) {
-      throw new GraphQLError("Loja não encontrada.");
-    }
-
-    if (!funcionario) {
-      throw new GraphQLError("Funcionário não encontrado.");
-    }
-
+    if (!loja) throw new GraphQLError("Loja não encontrada.");
+    if (!funcionario) throw new GraphQLError("Funcionário não encontrado.");
     if (funcionario.tipo_pessoa !== "EMPLOYEE") {
       throw new GraphQLError("Usuário não é um funcionário.");
     }
 
-    // Verifica se já existe uma venda na mesma data para o mesmo funcionário e loja
+    // 👉 Normaliza a data para 10h da manhã
+    const dataVenda = normalizarDataPara10h(data.data_venda ?? new Date());
+
     const vendaExistente = await prisma.venda.findFirst({
       where: {
         funcionario_id: data.funcionarioId,
         loja_id: data.lojaId,
-        data_venda: data.data_venda ?? new Date(), // Usa a data fornecida ou a data atual
+        data_venda: dataVenda,
       },
     });
 
@@ -186,26 +251,24 @@ class VendaServices {
           );
         }
 
-        // Calcula os pontos baseados no produto e quantidade
         const pontos = (produto.pontos ?? 0) * (detalhe.quantidade ?? 0);
         pontosTotais += pontos;
 
         return {
           produto_id: detalhe.produtoId,
           quantidade: detalhe.quantidade ?? 0,
-          pontos: pontos, // Define os pontos calculados para cada detalhe
+          pontos,
         };
       })
     );
 
-    // Cria a venda
     const venda = await prisma.venda.create({
       data: {
         funcionario_id: data.funcionarioId,
         loja_id: data.lojaId,
-        data_venda: data.data_venda ?? new Date(), // Usa a data fornecida ou a data atual
+        data_venda: dataVenda,
         pontos_totais: pontosTotais,
-        situacao: true, // Define a situação como ativa por padrão
+        situacao: true,
         venda_detalhe: {
           create: vendaDetalhesCriados,
         },

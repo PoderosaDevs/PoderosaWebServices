@@ -1,7 +1,7 @@
 import { Resolver, Query, Mutation, Arg } from "type-graphql";
-import { VendaModel } from "../models/Venda";
-import VendaServices from "../services/Venda"
-import { VendaInput } from "../inputs/Venda";
+import { StoreInsightsResponse, VendaModel } from "../models/Venda";
+import VendaServices from "../services/Venda";
+import { StoresInsightsFilterInput, VendaInput } from "../inputs/Venda";
 
 @Resolver()
 export class VendaResolver {
@@ -17,14 +17,29 @@ export class VendaResolver {
     }));
   }
 
+  @Query(() => StoreInsightsResponse)
+  async getStoresInsights(
+    @Arg("filters", { nullable: true }) filters?: StoresInsightsFilterInput
+  ) {
+    return await VendaServices.getStoresInsights(
+      filters?.startDate,
+      filters?.endDate,
+      filters?.pagina ?? 0,
+      filters?.quantidade ?? 10
+    );
+  }
+
   @Query(() => VendaModel, { nullable: true })
   async GetVendaByID(@Arg("id") id: number) {
     return await VendaServices.getByID(id);
   }
 
   @Query(() => [VendaModel], { nullable: true })
-  async GetVendaByUsuarioID(@Arg("id") id: number) {
-    return await VendaServices.getByUserID(id);
+  async GetVendaByUsuarioID(
+    @Arg("id") id: number,
+    @Arg("data_mensal", { nullable: true }) data_mensal?: string
+  ) {
+    return await VendaServices.getByUserID(id, data_mensal);
   }
 
   @Mutation(() => VendaModel)

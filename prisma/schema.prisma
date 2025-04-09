@@ -8,27 +8,27 @@ datasource db {
 }
 
 model usuario {
-  id                     Int                      @id @default(autoincrement())
-  uuid                   String                   @db.Char(36)
-  token_api              String?
-  senha                  String
-  email                  String                   @unique
-  complemento            String?
-  tema                   String?
-  cpf                    String?                  @unique
-  situacao               Boolean                  @default(true)
-  created_at             DateTime                 @default(now())
-  deleted_at             DateTime?
-  updated_at             DateTime?                @updatedAt
-  data_nascimento        DateTime?
-  nome                   String
-  funcao                 String?
-  usuario_foto           String?
-  tipo_pessoa            type_person              @default(EMPLOYEE)
-  dia_trabalhado         dia_trabalhado[]
-  vendas                 venda[]
-  metas                  Meta[]                   @relation("UsuarioMetas")
-  observacao             observacao[]
+  id              Int              @id @default(autoincrement())
+  uuid            String           @db.Char(36)
+  token_api       String?
+  senha           String
+  email           String           @unique
+  complemento     String?
+  tema            String?
+  cpf             String?          @unique
+  situacao        Boolean          @default(true)
+  created_at      DateTime         @default(now())
+  deleted_at      DateTime?
+  updated_at      DateTime?        @updatedAt
+  data_nascimento DateTime?
+  nome            String
+  funcao          String?
+  usuario_foto    String?
+  tipo_pessoa     type_person      @default(EMPLOYEE)
+  dia_trabalhado  dia_trabalhado[]
+  vendas          venda[]
+  metas           meta[]           @relation("UsuarioMetas")
+  observacao      observacao[]
 }
 
 model dia_trabalhado {
@@ -100,9 +100,39 @@ model marca {
   id       Int       @id @default(autoincrement())
   nome     String    @unique
   cor      String
-  metas    Meta[]
+  metas    meta[]
   linhas   linha[]
   produtos produto[]
+}
+
+model meta {
+  id              Int          @id @default(autoincrement())
+  nome            String
+  descricao       String?
+  usuario_id      Int
+  data_inicio     DateTime     @default(now())
+  data_fim        DateTime
+  pontos_objetivo Float
+  usuarios        usuario[]    @relation("UsuarioMetas") // Relacionamento de muitos para muitos com usuarios
+  meta_etapas     meta_etapa[]
+  marca           marca        @relation(fields: [marcaId], references: [id])
+  marcaId         Int
+  situacao        Int
+
+  @@unique([usuario_id, data_inicio])
+}
+
+model meta_etapa {
+  id           Int     @id @default(autoincrement())
+  meta_id      Int
+  etapa_numero Int // Número da etapa, para ordenar as etapas de 1 até N
+  recompensa   String // Recompensa para essa etapa
+  valor        Float // Valor associado à recompensa da etapa
+  atingida     Boolean @default(false) // Indica se a etapa foi atingida
+  importancia  Int // A importância dessa etapa (quanto maior, mais importante)
+  meta         meta    @relation(fields: [meta_id], references: [id])
+
+  @@index([meta_id])
 }
 
 model mail {
@@ -142,32 +172,6 @@ model loja {
   nome_fantasia String
   razao_social  String
   vendas        venda[]
-}
-
-model Meta {
-  id               Int         @id @default(autoincrement())
-  descricao        String
-  data_inicio      DateTime
-  data_fim         DateTime
-  marca_id         Int
-  quantidade_total Int
-  situacao         Boolean
-  created_at       DateTime    @default(now())
-  updated_at       DateTime    @updatedAt
-  marca            marca       @relation(fields: [marca_id], references: [id])
-  etapas           MetaEtapa[]
-  usuarios         usuario[]   @relation("UsuarioMetas")
-
-  @@index([marca_id])
-}
-
-model MetaEtapa {
-  id         Int      @id @default(autoincrement())
-  meta_id    Int
-  quantidade Int
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-  meta       Meta     @relation(fields: [meta_id], references: [id])
 }
 
 model observacao {

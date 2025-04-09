@@ -82,3 +82,30 @@ export class UsuarioResult {
   @Field(() => PaginationInfo)
   pageInfo!: PaginationInfo;
 }
+
+@ObjectType()
+export class UsuarioPontosModel {
+  @Field(() => ID)
+  id!: number;
+
+  @Field()
+  nome!: string;
+
+  @Field()
+  email!: string;
+
+  @Field(() => TypePerson, { nullable: true })
+  tipo_pessoa?: TypePerson;
+
+  @Field(() => Int)
+  pontos_totais!: number; // Soma dos pontos das vendas do usuário
+}
+
+@ObjectType()
+export class UsuarioPontosResult {
+  @Field(() => [UsuarioPontosModel])
+  result!: UsuarioPontosModel[];
+
+  @Field(() => PaginationInfo)
+  pageInfo!: PaginationInfo;
+}

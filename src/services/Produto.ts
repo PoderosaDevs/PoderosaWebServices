@@ -84,6 +84,15 @@ class ProdutoService {
 
   async create(data: ProdutoInput) {
 
+    const marcaExiste = await prisma.marca.findUnique({
+      where: { id: data.id_marca },
+    });
+    
+    if (!marcaExiste) {
+      throw new GraphQLError("A marca fornecida não existe.");
+    }
+    
+
     const categorias = await prisma.categoria.findMany({
       where: {
         nome: {

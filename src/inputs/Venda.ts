@@ -29,3 +29,18 @@ export class VendaInput {
   @Field(() => Date, { nullable: true })
   data_venda?: Date; // Ajustado para ser opcional
 }
+
+@InputType()
+export class StoresInsightsFilterInput {
+  @Field(() => Date, { nullable: true })
+  startDate?: Date;
+
+  @Field(() => Date, { nullable: true })
+  endDate?: Date;
+
+  @Field(() => Int, { nullable: true, defaultValue: 0 })
+  pagina?: number;
+
+  @Field(() => Int, { nullable: true, defaultValue: 10 })
+  quantidade?: number;
+}

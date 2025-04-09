@@ -39,3 +39,19 @@ export class AssociacaoMarcaInput {
   @Field(() => Int)
   marcaId!: number;
 }
+
+
+@InputType()
+export class BrandsInsightsFilterInput {
+  @Field(() => Date, { nullable: true })
+  startDate?: Date;
+
+  @Field(() => Date, { nullable: true })
+  endDate?: Date;
+
+  @Field(() => Int, { nullable: true, defaultValue: 0 })
+  pagina?: number;
+
+  @Field(() => Int, { nullable: true, defaultValue: 10 })
+  quantidade?: number;
+}

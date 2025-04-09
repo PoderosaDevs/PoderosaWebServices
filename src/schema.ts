@@ -1,6 +1,6 @@
-import 'reflect-metadata';
-import { buildSchema } from 'type-graphql';
-import { DateScalar } from './scalars/DateScalar'; // Ajuste o caminho conforme necessário
+import "reflect-metadata";
+import { buildSchema } from "type-graphql";
+import { DateScalar } from "./scalars/DateScalar"; // Ajuste o caminho conforme necessário
 import {
   Autenticacao,
   Produto,
@@ -8,8 +8,9 @@ import {
   Linha,
   Loja,
   Marca,
-  Venda
-} from './resolvers';
+  Meta,
+  Venda,
+} from "./resolvers";
 
 export const createSchema = async () => {
   return buildSchema({
@@ -20,10 +21,9 @@ export const createSchema = async () => {
       Linha,
       Loja,
       Marca,
+      Meta,
       Venda
     ],
-    scalarsMap: [
-      { type: Date, scalar: DateScalar },
-    ],
+    scalarsMap: [{ type: Date, scalar: DateScalar }],
   });
 };

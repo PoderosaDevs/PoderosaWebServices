@@ -1,10 +1,15 @@
 import { Resolver, Query, Mutation, Arg } from "type-graphql";
-import { UsuarioModel } from "../models/Usuario"; // Ajuste o caminho conforme necessário
-import { UsuarioInput } from "../inputs/Usuario";
+import {
+  UsuarioModel,
+  UsuarioPontosModel,
+  UsuarioPontosResult,
+} from "../models/Usuario"; // Ajuste o caminho conforme necessário
+import { UsuarioFiltroInput, UsuarioInput } from "../inputs/Usuario";
 import UsuarioService from "../services/Usuario";
 import { TypeSystem } from "../enums/TypeSystem";
 import { TypePerson } from "../enums/TypePerson";
 import { type_person } from "@prisma/client";
+import { Pagination } from "../inputs/Utils";
 
 @Resolver(() => UsuarioModel)
 export class UsuarioResolver {
@@ -14,6 +19,16 @@ export class UsuarioResolver {
   ) {
     const users = await UsuarioService.get(tipo_pessoa); // Passa os filtros para o serviço
     return users; // Retorna a lista diretamente
+  }
+
+  @Query(() => UsuarioPontosResult) // ✅ NÃO é uma lista ([]), pois retorna um objeto
+  async GetUsuariosInsights(
+    @Arg("filtro", () => UsuarioFiltroInput, { nullable: true })
+    filtro?: UsuarioFiltroInput,
+    @Arg("pagination", () => Pagination, { nullable: true })
+    pagination?: Pagination
+  ) {
+    return await UsuarioService.getUsersPoints(filtro || {}, pagination); // ✅ Retorna um único objeto
   }
 
   @Query(() => UsuarioModel, { nullable: true })

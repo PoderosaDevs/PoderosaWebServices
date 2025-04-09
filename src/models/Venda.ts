@@ -44,3 +44,46 @@ export class VendaModel {
   @Field(() => [VendaDetalhe], { nullable: 'items' }) // Permite que a lista de detalhes seja vazia, mas não null
   venda_detalhe!: VendaDetalhe[];
 }
+
+
+
+
+
+@ObjectType()
+export class StoreInsights {
+  @Field(() => Int)
+  id!: number;
+
+  @Field()
+  nome!: string;
+
+  @Field(() => Int)
+  total_vendas!: number;
+}
+
+@ObjectType()
+export class PageInfo {
+  @Field(() => Int)
+  currentPage!: number;
+
+  @Field(() => Int)
+  totalPages!: number;
+
+  @Field(() => Int)
+  totalItems!: number;
+
+  @Field()
+  hasNextPage!: boolean;
+
+  @Field()
+  hasPreviousPage!: boolean;
+}
+
+@ObjectType()
+export class StoreInsightsResponse {
+  @Field(() => [StoreInsights])
+  result!: StoreInsights[];
+
+  @Field(() => PageInfo)
+  pageInfo!: PageInfo;
+}

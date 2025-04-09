@@ -38,3 +38,12 @@ export class UsuarioInput {
   tipo_pessoa?: TypePerson;
 
 }
+
+@InputType()
+export class UsuarioFiltroInput {
+  @Field(() => DateScalar, { nullable: true })
+  data_inicio?: Date;
+
+  @Field(() => DateScalar, { nullable: true })
+  data_fim?: Date;
+}
