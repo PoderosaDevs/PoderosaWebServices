@@ -56,39 +56,56 @@ class VendaServices {
     pagina: number = 0,
     quantidade: number = 10
   ) {
-    // Se não houver datas, usa o mês atual
     const inicio = startDate ? new Date(startDate) : startOfMonth(new Date());
     const fim = endDate ? new Date(endDate) : endOfMonth(new Date());
 
-    // Buscar lojas com contagem de vendas
     const lojas = await prisma.loja.findMany({
-      include: {
-        _count: {
+      select: {
+        id: true,
+        nome_fantasia: true,
+        vendas: {
+          where: {
+            data_venda: {
+              gte: inicio,
+              lte: fim,
+            },
+          },
           select: {
-            vendas: {
-              where: {
-                data_venda: {
-                  gte: inicio,
-                  lte: fim,
-                },
+            venda_detalhe: {
+              select: {
+                quantidade: true,
               },
             },
           },
         },
       },
-      skip: pagina * quantidade,
-      take: quantidade,
     });
 
-    // Total de lojas para paginação
-    const totalLojas = await prisma.loja.count();
+    const resultOrdenado = lojas
+      .map((loja) => {
+        const total_vendas = loja.vendas.reduce((total, venda) => {
+          return (
+            total +
+            venda.venda_detalhe.reduce(
+              (soma, detalhe) => soma + detalhe.quantidade,
+              0
+            )
+          );
+        }, 0);
+
+        return {
+          id: loja.id,
+          nome: loja.nome_fantasia,
+          total_vendas,
+        };
+      })
+      .sort((a, b) => b.total_vendas - a.total_vendas) // ordenação do maior para o menor
+      .slice(pagina * quantidade, pagina * quantidade + quantidade); // paginação após ordenação
+
+    const totalLojas = lojas.length;
 
     return {
-      result: lojas.map((loja) => ({
-        id: loja.id,
-        nome: loja.nome_fantasia,
-        total_vendas: loja._count.vendas,
-      })),
+      result: resultOrdenado,
       pageInfo: {
         currentPage: pagina,
         totalPages: Math.ceil(totalLojas / quantidade),

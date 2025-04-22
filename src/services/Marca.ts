@@ -25,7 +25,7 @@ class MarcaServices {
   ): Promise<BrandInsightsResponse> {
     const inicio = startDate || startOfMonth(new Date());
     const fim = endDate || endOfMonth(new Date());
-
+  
     const marcas = await prisma.marca.findMany({
       select: {
         id: true,
@@ -43,7 +43,7 @@ class MarcaServices {
                 },
               },
               select: {
-                venda_id: true,
+                quantidade: true,
               },
             },
           },
@@ -52,21 +52,21 @@ class MarcaServices {
       skip: pagina * quantidade,
       take: quantidade,
     });
-
+  
     const result = marcas.map((marca) => ({
       id: marca.id,
       nome: marca.nome,
-      total_vendas: marca.produtos.reduce(
-        (total, produto) => total + produto.venda_detalhe.length,
-        0
-      ),
+      total_vendas: marca.produtos.reduce((total, produto) => {
+        return total + produto.venda_detalhe.reduce((soma, vd) => soma + vd.quantidade, 0);
+      }, 0),
     }));
-
+  
     const dataTotal = await prisma.marca.count();
     const pageInfo = getPageInfo(dataTotal, pagina, quantidade);
-
+  
     return { result, pageInfo };
   }
+  
   
   async getById(id: number) {
     return prisma.marca.findUnique({ where: { id } });
