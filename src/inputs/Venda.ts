@@ -32,11 +32,11 @@ export class VendaInput {
 
 @InputType()
 export class StoresInsightsFilterInput {
-  @Field(() => Date, { nullable: true })
-  startDate?: Date;
+  @Field(() => String, { nullable: true })
+  startDate?: string; // dd/MM/yyyy
 
-  @Field(() => Date, { nullable: true })
-  endDate?: Date;
+  @Field(() => String, { nullable: true })
+  endDate?: string; // dd/MM/yyyy
 
   @Field(() => Int, { nullable: true, defaultValue: 0 })
   pagina?: number;

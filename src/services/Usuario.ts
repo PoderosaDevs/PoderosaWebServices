@@ -7,7 +7,7 @@ import { HashPassword } from "../snippets/ValidationPassword";
 import { GraphQLError } from "graphql";
 import { TypePerson } from "../enums/TypePerson";
 import { Prisma, type_person } from "@prisma/client";
-import { startOfMonth, endOfMonth } from "date-fns";
+import { startOfMonth, endOfMonth, parse } from "date-fns";
 import { Pagination } from "../inputs/Utils";
 import getPageInfo from "../helpers/getPageInfo";
 
@@ -30,26 +30,28 @@ class UsuarioService {
   async getUsersPoints(data?: UsuarioFiltroInput, pagination?: Pagination) {
     let pagina: number = 0;
     let quantidade: number = 10;
-  
+
     if (pagination) {
       pagina = pagination.pagina ?? 0;
       quantidade = pagination.quantidade ?? 10;
     }
-  
+
+    const parseDate = (dateStr: string) =>
+      parse(dateStr, "dd/MM/yyyy", new Date());
+
     // Definir o intervalo de tempo, garantindo que `data` pode ser opcional
-    const inicio = data?.data_inicio
-      ? new Date(data.data_inicio)
+    const inicio = data?.startDate
+      ? parseDate(data.startDate)
       : startOfMonth(new Date());
-  
-    const fim = data?.data_fim
-      ? new Date(data.data_fim)
+    const fim = data?.endDate
+      ? parseDate(data.endDate)
       : endOfMonth(new Date());
-  
+
     // Aplicar filtros de usuário (removendo a exigência de vendas)
     const filters: Prisma.usuarioWhereInput = {
       situacao: true, // Apenas usuários ativos
     };
-  
+
     // Buscar todos os usuários, incluindo os que não fizeram vendas
     const usuarios = await prisma.usuario.findMany({
       where: filters,
@@ -73,28 +75,279 @@ class UsuarioService {
       skip: pagina * quantidade,
       take: quantidade,
     });
-  
+
     // Contagem total de usuários que atendem aos filtros
     const dataTotal = await prisma.usuario.count({ where: filters });
-  
+
     // Paginação
     const DataPageInfo = getPageInfo(dataTotal, pagina, quantidade);
-  
+
     // Mapear os usuários e calcular os pontos totais, garantindo que os que não venderam tenham 0 pontos
     return {
       result: usuarios.map((usuario) => ({
         id: usuario.id,
         nome: usuario.nome,
         email: usuario.email,
-        pontos_totais: usuario.vendas.length > 0
-          ? usuario.vendas.reduce((total, venda) => total + venda.pontos_totais, 0)
-          : 0, // ✅ Define 0 para usuários sem vendas
+        pontos_totais:
+          usuario.vendas.length > 0
+            ? usuario.vendas.reduce(
+                (total, venda) => total + venda.pontos_totais,
+                0
+              )
+            : 0, // ✅ Define 0 para usuários sem vendas
       })),
       pageInfo: DataPageInfo,
     };
   }
-  
-  
+
+  async getUserSalesById(
+    userId: number,
+    startDate?: string,
+    endDate?: string,
+    pagina: number = 0,
+    quantidade: number = 10
+  ) {
+    const parseDate = (dateStr: string) =>
+      parse(dateStr, "dd/MM/yyyy", new Date());
+
+    const inicio = startDate ? parseDate(startDate) : startOfMonth(new Date());
+    const fim = endDate ? parseDate(endDate) : endOfMonth(new Date());
+
+    // Buscar vendas do usuário no intervalo com detalhes e produto
+    const vendas = await prisma.venda.findMany({
+      where: {
+        funcionario_id: userId,
+        situacao: true,
+        data_venda: {
+          gte: inicio,
+          lte: fim,
+        },
+      },
+      skip: pagina * quantidade,
+      take: quantidade,
+      select: {
+        loja_id: true,
+        venda_detalhe: {
+          select: {
+            quantidade: true,
+            produto: {
+              select: {
+                id: true,
+                marca: {
+                  select: {
+                    id: true,
+                    nome: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    // Contagem total para paginação
+    const dataTotal = await prisma.venda.count({
+      where: {
+        funcionario_id: userId,
+        situacao: true,
+        data_venda: {
+          gte: inicio,
+          lte: fim,
+        },
+      },
+    });
+
+    const pageInfo = getPageInfo(dataTotal, pagina, quantidade);
+
+    if (!vendas || vendas.length === 0) {
+      // Retornar estrutura vazia, com pontos 0, e arrays vazios
+      const usuario = await prisma.usuario.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          nome: true,
+          email: true,
+          tipo_pessoa: true,
+        },
+      });
+
+      if (!usuario) {
+        throw new Error("Usuário não encontrado");
+      }
+
+      return {
+        result: {
+          id: usuario.id,
+          nome: usuario.nome,
+          email: usuario.email,
+          tipo_pessoa: usuario.tipo_pessoa,
+          pontos_totais: 0,
+          marcas: [],
+          lojas: [],
+        },
+        pageInfo,
+      };
+    }
+
+    // Acumular quantidades por marca e loja
+    const marcasMap = new Map<number, { nome: string; quantidade: number }>();
+    const lojasMap = new Map<number, { quantidade: number }>();
+
+    for (const venda of vendas) {
+      const lojaId = venda.loja_id;
+      if (lojaId) {
+        const lojaAtual = lojasMap.get(lojaId) ?? { quantidade: 0 };
+        lojaAtual.quantidade += venda.venda_detalhe.reduce(
+          (acc, vd) => acc + vd.quantidade,
+          0
+        );
+        lojasMap.set(lojaId, lojaAtual);
+      }
+
+      for (const detalhe of venda.venda_detalhe) {
+        const qtd = detalhe.quantidade;
+        const marca = detalhe.produto.marca;
+
+        if (marca) {
+          const marcaAtual = marcasMap.get(marca.id) ?? {
+            nome: marca.nome,
+            quantidade: 0,
+          };
+          marcaAtual.quantidade += qtd;
+          marcasMap.set(marca.id, marcaAtual);
+        }
+      }
+    }
+
+    // Buscar nomes das lojas para montar resultado
+    const lojasIds = Array.from(lojasMap.keys());
+    const lojasFromDb = await prisma.loja.findMany({
+      where: { id: { in: lojasIds } },
+      select: { id: true, nome_fantasia: true },
+    });
+
+    const lojasFinal = lojasFromDb.map((loja) => ({
+      nome: loja.nome_fantasia,
+      quantidade: lojasMap.get(loja.id)?.quantidade ?? 0,
+    }));
+
+    const marcasFinal = Array.from(marcasMap.values());
+
+    // Buscar dados básicos do usuário
+    const usuario = await prisma.usuario.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        nome: true,
+        email: true,
+        tipo_pessoa: true,
+      },
+    });
+
+    if (!usuario) {
+      throw new Error("Usuário não encontrado");
+    }
+
+    // Calcular pontos totais: soma das quantidades em todas as vendas (venda_detalhe)
+    const pontos_totais = vendas.reduce((acc, venda) => {
+      return (
+        acc +
+        venda.venda_detalhe.reduce((accDet, det) => accDet + det.quantidade, 0)
+      );
+    }, 0);
+
+    return {
+      result: {
+        id: usuario.id,
+        nome: usuario.nome,
+        email: usuario.email,
+        tipo_pessoa: usuario.tipo_pessoa,
+        pontos_totais,
+        marcas: marcasFinal,
+        lojas: lojasFinal,
+      },
+      pageInfo,
+    };
+  }
+
+  async getRankingUserSales(
+    startDate?: string,
+    endDate?: string,
+    pagina: number = 0,
+    quantidade: number = 10
+  ) {
+    const parseDate = (dateStr: string) =>
+      parse(dateStr, "dd/MM/yyyy", new Date());
+
+    const inicio = startDate ? parseDate(startDate) : startOfMonth(new Date());
+    const fim = endDate ? parseDate(endDate) : endOfMonth(new Date());
+
+    // Buscar apenas usuários EMPLOYEE
+    const usuarios = await prisma.usuario.findMany({
+      where: {
+        tipo_pessoa: "EMPLOYEE",
+      },
+      skip: pagina * quantidade,
+      take: quantidade,
+      select: {
+        id: true,
+        nome: true,
+        email: true,
+        tipo_pessoa: true,
+        vendas: {
+          where: {
+            situacao: true,
+            data_venda: {
+              gte: inicio,
+              lte: fim,
+            },
+          },
+          select: {
+            venda_detalhe: {
+              select: {
+                quantidade: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    // Contagem total de usuários EMPLOYEE para paginação
+    const dataTotal = await prisma.usuario.count({
+      where: {
+        tipo_pessoa: "EMPLOYEE",
+      },
+    });
+
+    const pageInfo = getPageInfo(dataTotal, pagina, quantidade);
+
+    // Calcular pontos e filtrar quem vendeu mais que 0
+    const result = usuarios
+      .map((usuario) => {
+        const pontos_totais = usuario.vendas.reduce((total, venda) => {
+          return (
+            total +
+            venda.venda_detalhe.reduce((soma, vd) => soma + vd.quantidade, 0)
+          );
+        }, 0);
+
+        return {
+          id: usuario.id,
+          nome: usuario.nome,
+          email: usuario.email,
+          tipo_pessoa: usuario.tipo_pessoa,
+          pontos_totais,
+        };
+      })
+      .filter((usuario) => usuario.pontos_totais > 0); // apenas quem vendeu mais que 0
+
+    return {
+      result,
+      pageInfo,
+    };
+  }
 
   async getByID(id: number) {
     const user = await prisma.usuario.findUnique({

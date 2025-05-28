@@ -1,7 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { GraphQLError } from "graphql";
 import { VendaDetalheInput, VendaInput } from "../inputs/Venda";
-import { endOfMonth, startOfMonth } from "date-fns";
+import { endOfMonth, parse, startOfMonth } from "date-fns";
 import { normalizarDataPara10h } from "../snippets/FormatDate";
 
 const prisma = new PrismaClient();
@@ -51,14 +51,16 @@ class VendaServices {
   }
 
   async getStoresInsights(
-    startDate?: Date,
-    endDate?: Date,
+    startDate?: string, // <- agora é string
+    endDate?: string,
     pagina: number = 0,
     quantidade: number = 10
   ) {
-    const inicio = startDate ? new Date(startDate) : startOfMonth(new Date());
-    const fim = endDate ? new Date(endDate) : endOfMonth(new Date());
-
+    const parseDate = (dateStr: string) => parse(dateStr, 'dd/MM/yyyy', new Date());
+  
+    const inicio = startDate ? parseDate(startDate) : startOfMonth(new Date());
+    const fim = endDate ? parseDate(endDate) : endOfMonth(new Date());
+  
     const lojas = await prisma.loja.findMany({
       select: {
         id: true,
@@ -80,7 +82,7 @@ class VendaServices {
         },
       },
     });
-
+  
     const resultOrdenado = lojas
       .map((loja) => {
         const total_vendas = loja.vendas.reduce((total, venda) => {
@@ -92,18 +94,18 @@ class VendaServices {
             )
           );
         }, 0);
-
+  
         return {
           id: loja.id,
           nome: loja.nome_fantasia,
           total_vendas,
         };
       })
-      .sort((a, b) => b.total_vendas - a.total_vendas) // ordenação do maior para o menor
-      .slice(pagina * quantidade, pagina * quantidade + quantidade); // paginação após ordenação
-
+      .sort((a, b) => b.total_vendas - a.total_vendas)
+      .slice(pagina * quantidade, pagina * quantidade + quantidade);
+  
     const totalLojas = lojas.length;
-
+  
     return {
       result: resultOrdenado,
       pageInfo: {

@@ -1,6 +1,6 @@
-import { InputType, Field } from 'type-graphql';
-import { TypePerson } from '../enums/TypePerson'; // Ajuste o caminho conforme necessário
-import { DateScalar } from '../scalars/DateScalar'; // Ajuste o caminho conforme necessário
+import { InputType, Field, Int } from "type-graphql";
+import { TypePerson } from "../enums/TypePerson"; // Ajuste o caminho conforme necessário
+import { DateScalar } from "../scalars/DateScalar"; // Ajuste o caminho conforme necessário
 
 @InputType()
 export class UsuarioInput {
@@ -36,14 +36,47 @@ export class UsuarioInput {
 
   @Field(() => TypePerson, { nullable: true })
   tipo_pessoa?: TypePerson;
-
 }
 
 @InputType()
 export class UsuarioFiltroInput {
-  @Field(() => DateScalar, { nullable: true })
-  data_inicio?: Date;
+  @Field(() => String, { nullable: true })
+  startDate?: string; // dd/MM/yyyy
 
-  @Field(() => DateScalar, { nullable: true })
-  data_fim?: Date;
+  @Field(() => String, { nullable: true })
+  endDate?: string; // dd/MM/yyyy
+}
+
+@InputType()
+export class UsuarioInsightsFiltroInput {
+  @Field(() => String, { nullable: true })
+  startDate?: string; // dd/MM/yyyy
+
+  @Field(() => String, { nullable: true })
+  endDate?: string; // dd/MM/yyyy
+
+  @Field(() => Number, { nullable: false })
+  userId!: number;
+
+  @Field(() => Int, { nullable: true, defaultValue: 0 })
+  pagina?: number;
+
+  @Field(() => Int, { nullable: true, defaultValue: 10 })
+  quantidade?: number;
+}
+
+
+@InputType()
+export class RankingUsuariosFiltroInput {
+  @Field(() => String, { nullable: true })
+  startDate?: string; // dd/MM/yyyy
+
+  @Field(() => String, { nullable: true })
+  endDate?: string; // dd/MM/yyyy
+
+  @Field(() => Int, { nullable: true, defaultValue: 0 })
+  pagina?: number;
+
+  @Field(() => Int, { nullable: true, defaultValue: 10 })
+  quantidade?: number;
 }

@@ -1,10 +1,16 @@
 import { Resolver, Query, Mutation, Arg } from "type-graphql";
 import {
+  UsuarioInsightsResult,
   UsuarioModel,
   UsuarioPontosModel,
   UsuarioPontosResult,
 } from "../models/Usuario"; // Ajuste o caminho conforme necessário
-import { UsuarioFiltroInput, UsuarioInput } from "../inputs/Usuario";
+import {
+  UsuarioInput,
+  UsuarioFiltroInput,
+  UsuarioInsightsFiltroInput,
+  RankingUsuariosFiltroInput,
+} from "../inputs/Usuario";
 import UsuarioService from "../services/Usuario";
 import { TypeSystem } from "../enums/TypeSystem";
 import { TypePerson } from "../enums/TypePerson";
@@ -22,13 +28,28 @@ export class UsuarioResolver {
   }
 
   @Query(() => UsuarioPontosResult) // ✅ NÃO é uma lista ([]), pois retorna um objeto
-  async GetUsuariosInsights(
-    @Arg("filtro", () => UsuarioFiltroInput, { nullable: true })
-    filtro?: UsuarioFiltroInput,
-    @Arg("pagination", () => Pagination, { nullable: true })
-    pagination?: Pagination
+  async GetRankingUsuarios(
+    @Arg("filters", { nullable: true }) filters?: RankingUsuariosFiltroInput
   ) {
-    return await UsuarioService.getUsersPoints(filtro || {}, pagination); // ✅ Retorna um único objeto
+    return await UsuarioService.getRankingUserSales(
+      filters?.startDate,
+      filters?.endDate,
+      filters?.pagina ?? 0,
+      filters?.quantidade ?? 10
+    ); // ✅ Retorna um único objeto
+  }
+
+  @Query(() => UsuarioInsightsResult)
+  async GetUsuariosInsights(
+    @Arg("filters", { nullable: true }) filters?: UsuarioInsightsFiltroInput
+  ) {
+    return await UsuarioService.getUserSalesById(
+      filters!.userId!,
+      filters?.startDate,
+      filters?.endDate,
+      filters?.pagina ?? 0,
+      filters?.quantidade ?? 10
+    );
   }
 
   @Query(() => UsuarioModel, { nullable: true })
