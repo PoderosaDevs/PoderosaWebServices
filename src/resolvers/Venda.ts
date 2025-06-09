@@ -1,8 +1,7 @@
 import { Resolver, Query, Mutation, Arg } from "type-graphql";
 import {
   StoreInsightsResponse,
-  UsuarioInsighsVendasModel,
-  VendaModel,
+  VendaModel
 } from "../models/Venda";
 import VendaServices from "../services/Venda";
 import { StoresInsightsFilterInput, VendaInput } from "../inputs/Venda";
