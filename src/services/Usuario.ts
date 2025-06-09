@@ -7,9 +7,10 @@ import { HashPassword } from "../snippets/ValidationPassword";
 import { GraphQLError } from "graphql";
 import { TypePerson } from "../enums/TypePerson";
 import { Prisma, type_person } from "@prisma/client";
-import { startOfMonth, endOfMonth, parse } from "date-fns";
+import { startOfMonth, endOfMonth, parse, endOfDay } from "date-fns";
 import { Pagination } from "../inputs/Utils";
 import getPageInfo from "../helpers/getPageInfo";
+import { PaginationInfo } from "../models/Utils";
 
 class UsuarioService {
   async get(tipo_pessoa?: TypePerson) {
@@ -111,130 +112,17 @@ class UsuarioService {
       parse(dateStr, "dd/MM/yyyy", new Date());
 
     const inicio = startDate ? parseDate(startDate) : startOfMonth(new Date());
-    const fim = endDate ? parseDate(endDate) : endOfMonth(new Date());
+    const fim = endDate
+      ? endOfDay(parseDate(endDate))
+      : endOfDay(endOfMonth(new Date()));
 
-    // Buscar vendas do usuário no intervalo com detalhes e produto
-    const vendas = await prisma.venda.findMany({
-      where: {
-        funcionario_id: userId,
-        situacao: true,
-        data_venda: {
-          gte: inicio,
-          lte: fim,
-        },
+    const dataFilter = {
+      data_venda: {
+        gte: inicio,
+        lte: fim,
       },
-      skip: pagina * quantidade,
-      take: quantidade,
-      select: {
-        loja_id: true,
-        venda_detalhe: {
-          select: {
-            quantidade: true,
-            produto: {
-              select: {
-                id: true,
-                marca: {
-                  select: {
-                    id: true,
-                    nome: true,
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-    });
+    };
 
-    // Contagem total para paginação
-    const dataTotal = await prisma.venda.count({
-      where: {
-        funcionario_id: userId,
-        situacao: true,
-        data_venda: {
-          gte: inicio,
-          lte: fim,
-        },
-      },
-    });
-
-    const pageInfo = getPageInfo(dataTotal, pagina, quantidade);
-
-    if (!vendas || vendas.length === 0) {
-      // Retornar estrutura vazia, com pontos 0, e arrays vazios
-      const usuario = await prisma.usuario.findUnique({
-        where: { id: userId },
-        select: {
-          id: true,
-          nome: true,
-          email: true,
-          tipo_pessoa: true,
-        },
-      });
-
-      if (!usuario) {
-        throw new Error("Usuário não encontrado");
-      }
-
-      return {
-        result: {
-          id: usuario.id,
-          nome: usuario.nome,
-          email: usuario.email,
-          tipo_pessoa: usuario.tipo_pessoa,
-          pontos_totais: 0,
-          marcas: [],
-          lojas: [],
-        },
-        pageInfo,
-      };
-    }
-
-    // Acumular quantidades por marca e loja
-    const marcasMap = new Map<number, { nome: string; quantidade: number }>();
-    const lojasMap = new Map<number, { quantidade: number }>();
-
-    for (const venda of vendas) {
-      const lojaId = venda.loja_id;
-      if (lojaId) {
-        const lojaAtual = lojasMap.get(lojaId) ?? { quantidade: 0 };
-        lojaAtual.quantidade += venda.venda_detalhe.reduce(
-          (acc, vd) => acc + vd.quantidade,
-          0
-        );
-        lojasMap.set(lojaId, lojaAtual);
-      }
-
-      for (const detalhe of venda.venda_detalhe) {
-        const qtd = detalhe.quantidade;
-        const marca = detalhe.produto.marca;
-
-        if (marca) {
-          const marcaAtual = marcasMap.get(marca.id) ?? {
-            nome: marca.nome,
-            quantidade: 0,
-          };
-          marcaAtual.quantidade += qtd;
-          marcasMap.set(marca.id, marcaAtual);
-        }
-      }
-    }
-
-    // Buscar nomes das lojas para montar resultado
-    const lojasIds = Array.from(lojasMap.keys());
-    const lojasFromDb = await prisma.loja.findMany({
-      where: { id: { in: lojasIds } },
-      select: { id: true, nome_fantasia: true },
-    });
-
-    const lojasFinal = lojasFromDb.map((loja) => ({
-      nome: loja.nome_fantasia,
-      quantidade: lojasMap.get(loja.id)?.quantidade ?? 0,
-    }));
-
-    const marcasFinal = Array.from(marcasMap.values());
-
-    // Buscar dados básicos do usuário
     const usuario = await prisma.usuario.findUnique({
       where: { id: userId },
       select: {
@@ -249,23 +137,109 @@ class UsuarioService {
       throw new Error("Usuário não encontrado");
     }
 
-    // Calcular pontos totais: soma das quantidades em todas as vendas (venda_detalhe)
-    const pontos_totais = vendas.reduce((acc, venda) => {
-      return (
-        acc +
-        venda.venda_detalhe.reduce((accDet, det) => accDet + det.quantidade, 0)
-      );
-    }, 0);
+    const vendas = await prisma.venda.findMany({
+      where: {
+        funcionario_id: userId,
+        ...dataFilter,
+      },
+      include: {
+        loja: {
+          select: {
+            id: true,
+            nome_fantasia: true,
+          },
+        },
+        venda_detalhe: {
+          include: {
+            produto: {
+              include: {
+                marca: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const dataTotal = await prisma.venda.count({
+      where: {
+        funcionario_id: userId,
+        situacao: true,
+        ...dataFilter,
+      },
+    });
+
+    const pageInfo: PaginationInfo = {
+      currentPage: pagina,
+      totalPages: Math.ceil(dataTotal / quantidade),
+      totalItems: dataTotal,
+      hasNextPage: pagina * quantidade + quantidade < dataTotal,
+      hasPreviousPage: pagina > 0,
+    };
+
+    if (!vendas || vendas.length === 0) {
+      return {
+        result: {
+          ...usuario,
+          pontos_totais: 0,
+          marcas: [],
+          lojas: [],
+        },
+        pageInfo,
+      };
+    }
+
+    let pontos_totais = 0;
+
+    const marcasMap = new Map<
+      number,
+      { id: number; nome: string; quantidade: number }
+    >();
+    const lojasMap = new Map<
+      number,
+      { id: number; nome: string; quantidade: number }
+    >();
+
+    for (const venda of vendas) {
+      let totalVenda = 0;
+
+      for (const detalhe of venda.venda_detalhe) {
+        const qtd = detalhe.quantidade;
+        pontos_totais += qtd;
+        totalVenda += qtd;
+
+        const marca = detalhe.produto?.marca;
+        if (marca) {
+          if (!marcasMap.has(marca.id)) {
+            marcasMap.set(marca.id, {
+              id: marca.id,
+              nome: marca.nome,
+              quantidade: 0,
+            });
+          }
+          marcasMap.get(marca.id)!.quantidade += qtd;
+        }
+      }
+
+      const loja = venda.loja;
+      if (loja) {
+        if (!lojasMap.has(loja.id)) {
+          lojasMap.set(loja.id, {
+            id: loja.id,
+            nome: loja.nome_fantasia ?? "Loja sem nome",
+            quantidade: 0,
+          });
+        }
+        lojasMap.get(loja.id)!.quantidade += totalVenda;
+      }
+    }
 
     return {
       result: {
-        id: usuario.id,
-        nome: usuario.nome,
-        email: usuario.email,
-        tipo_pessoa: usuario.tipo_pessoa,
+        ...usuario,
         pontos_totais,
-        marcas: marcasFinal,
-        lojas: lojasFinal,
+        marcas: Array.from(marcasMap.values()),
+        lojas: Array.from(lojasMap.values()),
       },
       pageInfo,
     };

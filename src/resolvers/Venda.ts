@@ -1,7 +1,13 @@
 import { Resolver, Query, Mutation, Arg } from "type-graphql";
-import { StoreInsightsResponse, VendaModel } from "../models/Venda";
+import {
+  StoreInsightsResponse,
+  UsuarioInsighsVendasModel,
+  VendaModel,
+} from "../models/Venda";
 import VendaServices from "../services/Venda";
 import { StoresInsightsFilterInput, VendaInput } from "../inputs/Venda";
+import { UsuarioInsightsFiltroInput } from "../inputs/Usuario";
+import { UsuarioInsightsResult } from "../models/Usuario";
 
 @Resolver()
 export class VendaResolver {
@@ -41,6 +47,7 @@ export class VendaResolver {
   ) {
     return await VendaServices.getByUserID(id, data_mensal);
   }
+
 
   @Mutation(() => VendaModel)
   async SetVenda(@Arg("data") data: VendaInput) {
