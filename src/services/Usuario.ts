@@ -190,23 +190,52 @@ class UsuarioService {
     }
 
     let pontos_totais = 0;
+    let pontos_totais_tratamento = 0;
+    let pontos_totais_coloracao = 0;
 
     const marcasMap = new Map<
       number,
-      { id: number; nome: string; quantidade: number }
+      {
+        id: number;
+        nome: string;
+        quantidade: number;
+        pontos_tratamento: number;
+        pontos_coloracao: number;
+      }
     >();
     const lojasMap = new Map<
       number,
-      { id: number; nome: string; quantidade: number }
+      {
+        id: number;
+        nome: string;
+        quantidade: number;
+        pontos_tratamento: number;
+        pontos_coloracao: number;
+      }
     >();
 
     for (const venda of vendas) {
       let totalVenda = 0;
+      let pontosTratamentoVenda = 0;
+      let pontosColoracaoVenda = 0;
 
       for (const detalhe of venda.venda_detalhe) {
         const qtd = detalhe.quantidade;
+        const nomeProduto = detalhe.produto?.nome ?? "";
+
         pontos_totais += qtd;
         totalVenda += qtd;
+
+        const isTratamento = nomeProduto.startsWith("T ");
+        const isColoracao = nomeProduto.startsWith("C ");
+
+        if (isTratamento) {
+          pontos_totais_tratamento += qtd;
+          pontosTratamentoVenda += qtd;
+        } else if (isColoracao) {
+          pontos_totais_coloracao += qtd;
+          pontosColoracaoVenda += qtd;
+        }
 
         const marca = detalhe.produto?.marca;
         if (marca) {
@@ -215,9 +244,18 @@ class UsuarioService {
               id: marca.id,
               nome: marca.nome,
               quantidade: 0,
+              pontos_tratamento: 0,
+              pontos_coloracao: 0,
             });
           }
-          marcasMap.get(marca.id)!.quantidade += qtd;
+
+          const marcaData = marcasMap.get(marca.id)!;
+          marcaData.quantidade += qtd;
+          if (isTratamento) {
+            marcaData.pontos_tratamento += qtd;
+          } else if (isColoracao) {
+            marcaData.pontos_coloracao += qtd;
+          }
         }
       }
 
@@ -228,9 +266,15 @@ class UsuarioService {
             id: loja.id,
             nome: loja.nome_fantasia ?? "Loja sem nome",
             quantidade: 0,
+            pontos_tratamento: 0,
+            pontos_coloracao: 0,
           });
         }
-        lojasMap.get(loja.id)!.quantidade += totalVenda;
+
+        const lojaData = lojasMap.get(loja.id)!;
+        lojaData.quantidade += totalVenda;
+        lojaData.pontos_tratamento += pontosTratamentoVenda;
+        lojaData.pontos_coloracao += pontosColoracaoVenda;
       }
     }
 
@@ -238,6 +282,8 @@ class UsuarioService {
       result: {
         ...usuario,
         pontos_totais,
+        pontos_totais_tratamento,
+        pontos_totais_coloracao,
         marcas: Array.from(marcasMap.values()),
         lojas: Array.from(lojasMap.values()),
       },

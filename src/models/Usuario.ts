@@ -117,6 +117,12 @@ export class MarcaVendaModel {
 
   @Field(() => Int)
   quantidade!: number;
+
+  @Field(() => Int)
+  pontos_tratamento!: number;
+
+  @Field(() => Int)
+  pontos_coloracao!: number;
 }
 
 @ObjectType()
@@ -126,6 +132,12 @@ class LojaVendaModel {
 
   @Field(() => Int)
   quantidade!: number;
+
+    @Field(() => Int)
+  pontos_tratamento!: number;
+
+  @Field(() => Int)
+  pontos_coloracao!: number;
 }
 
 @ObjectType()
@@ -144,6 +156,12 @@ export class UsuarioInsights {
 
   @Field(() => Int)
   pontos_totais!: number;
+
+  @Field(() => Int)
+  pontos_totais_coloracao!: number;
+
+  @Field(() => Int)
+  pontos_totais_tratamento!: number;
 
   @Field(() => [MarcaVendaModel])
   marcas!: MarcaVendaModel[];

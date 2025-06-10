@@ -12,10 +12,8 @@ import {
   RankingUsuariosFiltroInput,
 } from "../inputs/Usuario";
 import UsuarioService from "../services/Usuario";
-import { TypeSystem } from "../enums/TypeSystem";
 import { TypePerson } from "../enums/TypePerson";
 import { type_person } from "@prisma/client";
-import { Pagination } from "../inputs/Utils";
 
 @Resolver(() => UsuarioModel)
 export class UsuarioResolver {
