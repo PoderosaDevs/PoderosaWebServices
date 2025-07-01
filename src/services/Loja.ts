@@ -56,8 +56,13 @@ class LojaService {
     });
   }
 
-  async delete(id: number) {
-    return prisma.loja.delete({ where: { id } });
+  async deleteLoja(id: number) {
+    const { id: deletedId } = await prisma.loja.delete({
+      where: { id },
+      select: { id: true }, // devolve só o campo id
+    });
+
+    return deletedId; // → 123
   }
 
   async getStoreSalesById(

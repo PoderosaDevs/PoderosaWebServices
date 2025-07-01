@@ -106,34 +106,33 @@ model marca {
 }
 
 model meta {
-  id              Int          @id @default(autoincrement())
+  id              Int           @id @default(autoincrement())
   nome            String
   descricao       String?
   usuario_id      Int
-  data_inicio     DateTime     @default(now())
-  data_fim        DateTime
-  pontos_objetivo Float
-  usuarios        usuario[]    @relation("UsuarioMetas") // Relacionamento de muitos para muitos com usuarios
+  data_inicio     DateTime      @default(now())
+  data_fim        DateTime      @default(now()) // ← Adicionado default
+  objetivo_total  Int           @default(0)     // ← Adicionado default
+  usuarios        usuario[]     @relation("UsuarioMetas")
   meta_etapas     meta_etapa[]
-  marca           marca        @relation(fields: [marcaId], references: [id])
+  marca           marca         @relation(fields: [marcaId], references: [id])
   marcaId         Int
-  situacao        Int
+  situacao        Int           @default(0)     // ← Adicionado default
 
   @@unique([usuario_id, data_inicio])
 }
 
 model meta_etapa {
-  id           Int     @id @default(autoincrement())
-  meta_id      Int
-  etapa_numero Int // Número da etapa, para ordenar as etapas de 1 até N
-  recompensa   String // Recompensa para essa etapa
-  valor        Float // Valor associado à recompensa da etapa
-  atingida     Boolean @default(false) // Indica se a etapa foi atingida
-  importancia  Int // A importância dessa etapa (quanto maior, mais importante)
-  meta         meta    @relation(fields: [meta_id], references: [id])
+  id        Int     @id @default(autoincrement())
+  meta_id   Int
+  nome      String  @default("Etapa")           // ← Adicionado default
+  objetivo  Int     @default(0)                 // ← Adicionado default
+  atingida  Boolean @default(false)
+  meta      meta    @relation(fields: [meta_id], references: [id])
 
   @@index([meta_id])
 }
+
 
 model mail {
   id             Int       @id @default(autoincrement())

@@ -15,6 +15,13 @@ export class LojaModel {
 }
 
 @ObjectType()
+export class LojaDeleteModel {
+  @Field(() => Int)
+  id!: number;
+}
+
+
+@ObjectType()
 export class LojaResult {
   @Field(() => [LojaModel])
   result!: LojaModel[];

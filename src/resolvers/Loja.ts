@@ -1,6 +1,6 @@
 import { Resolver, Query, Mutation, Arg, Int } from "type-graphql";
 import LojaService from "../services/Loja";
-import { LojaInsightsResult, LojaModel, LojaResult } from "../models/Loja";
+import { LojaDeleteModel, LojaInsightsResult, LojaModel, LojaResult } from "../models/Loja";
 import { CreateLojaInput, LojaInsightsFiltroInput, UpdateLojaInput } from "../inputs/Lojas";
 import { Pagination } from "../inputs/Utils";
 
@@ -47,11 +47,10 @@ export class LojaResolver {
     return loja;
   }
 
-  @Mutation(() => Boolean)
-  async DeleteLoja(@Arg("id", () => Int) id: number): Promise<boolean> {
+  @Mutation(() => LojaDeleteModel)
+  async DeleteLoja(@Arg("id", () => Int) id: number) {
     try {
-      await LojaService.delete(id);
-      return true;
+      return await LojaService.deleteLoja(id);
     } catch (error) {
       console.error("Erro ao deletar loja:", error);
       return false;
