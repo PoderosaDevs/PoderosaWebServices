@@ -1,6 +1,41 @@
 // models/Meta.ts
-import { ObjectType, Field, Int, Float, ID } from 'type-graphql';
+import { ObjectType, Field, Int, registerEnumType } from 'type-graphql';
 
+/* ---------- Enum da situação (mesma ordem do Prisma) ---------- */
+export enum MetaSituacao {
+  PENDENTE  = 'PENDENTE',
+  ANDAMENTO = 'ANDAMENTO',
+  CONCLUIDA = 'CONCLUIDA',
+}
+
+registerEnumType(MetaSituacao, {
+  name: 'MetaSituacao',
+});
+
+/* ---------- Etapas ---------- */
+@ObjectType()
+export class MetaEtapaModel {
+  @Field(() => Int)
+  id!: number;
+
+  // Prisma → meta_id  |  TypeScript → metaId
+  @Field(() => Int, { name: 'meta_id' })
+  metaId!: number;
+
+  @Field()
+  nome!: string;
+
+  @Field(() => Int)
+  quantidade_objetivo!: number;
+
+  @Field(() => Int)
+  quantidade_atual!: number;
+
+  @Field()
+  atingida!: boolean;
+}
+
+/* ---------- Meta principal ---------- */
 @ObjectType()
 export class MetaModel {
   @Field(() => Int)
@@ -13,51 +48,28 @@ export class MetaModel {
   descricao?: string;
 
   @Field(() => Int)
-  usuario_id!: number;
+  quantidade_objetivo!: number;
 
-  @Field(() => Date)
+  @Field(() => Int)
+  quantidade_atual!: number;
+
+  @Field()
   data_inicio!: Date;
 
-  @Field({ nullable: true })
-  data_fim?: Date;
+  @Field()
+  data_fim!: Date;
 
-  @Field(() => Float)
-  pontos_objetivo!: number;
+  @Field(() => MetaSituacao)
+  situacao!: MetaSituacao;
 
+  /* ---- Relações (FKs) ---- */
+  @Field(() => Int)
+  usuarioId!: number;
+
+  @Field(() => Int)
+  marcaId!: number;
+
+  /* ---- Relação 1:N com etapas ---- */
   @Field(() => [MetaEtapaModel])
   meta_etapas!: MetaEtapaModel[];
-
-  @Field(() => Int, { nullable: true })
-  marcaId!: number;
-}
-
-
-@ObjectType()
-export class MetaEtapaModel {
-  @Field(() => Int)
-  id!: number;
-
-  @Field(() => Int)
-  meta_id!: number;
-
-  @Field(() => Int)
-  etapa_numero!: number;
-
-  @Field(() => Float)
-  quantidade!: number;
-
-  @Field()
-  recompensa!: string;
-
-  @Field(() => Float)
-  valor!: number;
-
-  @Field()
-  atingida!: boolean;
-
-  @Field(() => Int)
-  importancia!: number;
-
-  @Field(() => MetaModel)
-  meta!: MetaModel;
 }

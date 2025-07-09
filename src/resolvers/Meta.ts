@@ -1,69 +1,53 @@
 // metaResolver.ts
 
-import { Resolver, Mutation, Query, Arg, Int, Float } from "type-graphql";
+import {
+  Resolver,
+  Mutation,
+  Query,
+  Arg,
+  Int,
+  Float,
+  GraphQLISODateTime,
+} from "type-graphql";
 import MetaService from "../services/Meta";
-import { MetaEtapaModel, MetaModel } from "../models/Meta";
-import { MetaEtapaInputs, MetaEtapaUpdateInputs } from "../inputs/Meta";
+import { MetaModel } from "../models/Meta";
+import { CreateMetaInput } from "../inputs/Meta";
+import { GraphQLString } from "graphql";
 
 @Resolver()
 export class MetaResolver {
   // Query para listar todas as metas de um usuário e suas etapas
   @Query(() => [MetaModel])
-  async GetMetas(@Arg("usuarioId", () => Int) usuarioId: number) {
-    return MetaService.obterMetasPorUsuario(usuarioId); // Método para obter metas e etapas de um usuário
-  }
+  async GetMetas(
+    @Arg("usuarioId", () => Int) usuarioId: number,
 
-  // Query para listar uma meta específica e suas etapas
-  @Query(() => MetaModel)
-  async GetMetaByID(@Arg("id", () => Int) id: number) {
-    return MetaService.obterMetaPorId(id); // Método para obter uma meta e suas etapas por ID
-  }
+    // ► Agora strings no formato "dd/MM/yyyy"
+    @Arg("data_inicio", () => GraphQLString, { nullable: true })
+    data_inicio?: string,
 
-  // Mutation para criar uma meta e suas etapas
-  // @Mutation(() => MetaModel)
-  // async SetMeta(
-  //   @Arg("nome") nome: string,
-  //   @Arg("descricao", { nullable: true }) descricao: string,
-  //   @Arg("usuarioId", () => Int) usuarioId: number,
-  //   @Arg("pontos_objetivo", () => Float) pontos_objetivo: number,
-  //   @Arg("marcaId", () => Int, { nullable: true }) marcaId: number,
-  //   @Arg("etapas", () => [MetaEtapaInputs])
-  //   etapas: {
-  //     etapa_numero: number;
-  //     quantidade: number;
-  //     recompensa: string;
-  //     valor: number;
-  //     importancia: number;
-  //   }[]
-  // ) {
-  //   return MetaService.criarMetaComEtapas({
-  //     nome,
-  //     descricao,
-  //     usuario_id: usuarioId,
-  //     pontos_objetivo,
-  //     marcaId,
-  //     etapas,
-  //   });
-  // }
-
-  // Mutation para atualizar as etapas de uma meta
-  @Mutation(() => [MetaEtapaModel])
-  async PutMetaEtapas(
-    @Arg("metaId", () => Int) metaId: number,
-    @Arg("etapas", () => [MetaEtapaUpdateInputs])
-    etapas: MetaEtapaUpdateInputs[] // Usando MetaEtapaUpdateInputs como tipo de entrada
+    @Arg("data_fim", () => GraphQLString, { nullable: true })
+    data_fim?: string
   ) {
-    return MetaService.atualizarEtapas(metaId, etapas);
+    return MetaService.getMetasByUsuario(usuarioId, {
+      inicio: data_inicio,
+      fim: data_fim,
+    });
   }
 
-  // Mutation para excluir uma meta e suas etapas
-  @Mutation(() => Boolean)
-  async DeleteMeta(@Arg("id", () => Int) id: number) {
-    try {
-      await MetaService.deletarMetaComEtapas(id); // Exclui meta e etapas associadas
-      return true;
-    } catch {
-      return false;
-    }
+  @Query(() => MetaModel, { nullable: true })
+  async GetMeta(@Arg("metaId", () => Int) metaId: number) {
+    return MetaService.getMetaComEtapas(metaId);
+  }
+
+  @Mutation(() => MetaModel)
+  async SetMeta(@Arg("data", () => CreateMetaInput) data: CreateMetaInput) {
+    const res = await MetaService.criarMeta(data);
+    return res; // ou retorne res inteiro se quiser o id
+  }
+
+  @Mutation(() => String)
+  async DeleteMeta(@Arg("metaId", () => Int) metaId: number) {
+    const res = await MetaService.deletarMeta(metaId);
+    return res.mensagem; // ou retorne res inteiro se quiser o id
   }
 }

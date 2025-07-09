@@ -27,7 +27,7 @@ model usuario {
   tipo_pessoa     type_person      @default(EMPLOYEE)
   dia_trabalhado  dia_trabalhado[]
   vendas          venda[]
-  metas           meta[]           @relation("UsuarioMetas")
+  metas           meta[]
   observacao      observacao[]
 }
 
@@ -105,35 +105,6 @@ model marca {
   produtos produto[]
 }
 
-model meta {
-  id              Int           @id @default(autoincrement())
-  nome            String
-  descricao       String?
-  usuario_id      Int
-  data_inicio     DateTime      @default(now())
-  data_fim        DateTime      @default(now()) // ← Adicionado default
-  objetivo_total  Int           @default(0)     // ← Adicionado default
-  usuarios        usuario[]     @relation("UsuarioMetas")
-  meta_etapas     meta_etapa[]
-  marca           marca         @relation(fields: [marcaId], references: [id])
-  marcaId         Int
-  situacao        Int           @default(0)     // ← Adicionado default
-
-  @@unique([usuario_id, data_inicio])
-}
-
-model meta_etapa {
-  id        Int     @id @default(autoincrement())
-  meta_id   Int
-  nome      String  @default("Etapa")           // ← Adicionado default
-  objetivo  Int     @default(0)                 // ← Adicionado default
-  atingida  Boolean @default(false)
-  meta      meta    @relation(fields: [meta_id], references: [id])
-
-  @@index([meta_id])
-}
-
-
 model mail {
   id             Int       @id @default(autoincrement())
   assunto        String?   @db.VarChar(445)
@@ -183,10 +154,57 @@ model observacao {
   usuario    usuario @relation(fields: [usuario_id], references: [id])
 }
 
+/// --------------------------------------
+/// Modelos ajustados
+/// --------------------------------------
+
+model meta {
+  id                  Int     @id @default(autoincrement())
+  nome                String
+  descricao           String?
+  quantidade_objetivo Int
+  quantidade_atual    Int     @default(0)
+
+  data_inicio DateTime     @default(now())
+  data_fim    DateTime
+  situacao    MetaSituacao @default(PENDENTE)
+
+  marcaId   Int
+  marca     marca   @relation(fields: [marcaId], references: [id])
+
+  usuarioId Int                
+  usuario   usuario @relation(fields: [usuarioId], references: [id])
+
+  meta_etapas meta_etapa[]
+
+  @@unique([marcaId, usuarioId, nome, data_inicio])
+}
+
+model meta_etapa {
+  id                  Int     @id @default(autoincrement())
+  meta_id             Int
+  nome                String
+  // ↓ Também em quantidade
+  quantidade_objetivo Int     @default(0)
+  quantidade_atual    Int     @default(0)
+  atingida            Boolean @default(false)
+
+  meta meta @relation(fields: [meta_id], references: [id])
+
+  @@index([meta_id])
+}
+
 enum type_person {
   USER
   ADMIN
   EMPLOYEE
   MANAGER
   GUEST
+}
+
+enum MetaSituacao {
+  PENDENTE
+  EM_ANDAMENTO
+  CONCLUIDA
+  CANCELADA
 }
