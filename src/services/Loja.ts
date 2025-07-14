@@ -2,7 +2,7 @@ import { PrismaClient } from "@prisma/client";
 import { Pagination } from "../inputs/Utils";
 import { LojaResult } from "../models/Loja";
 import getPageInfo from "../helpers/getPageInfo";
-import { endOfMonth, parse, startOfMonth } from "date-fns";
+import { endOfDay, endOfMonth, parse, startOfMonth } from "date-fns";
 
 const prisma = new PrismaClient();
 
@@ -76,17 +76,22 @@ class LojaService {
       parse(dateStr, "dd/MM/yyyy", new Date());
 
     const inicio = startDate ? parseDate(startDate) : startOfMonth(new Date());
-    const fim = endDate ? parseDate(endDate) : endOfMonth(new Date());
+    const fim = endDate
+      ? endOfDay(parseDate(endDate))
+      : endOfDay(endOfMonth(new Date()));
 
-    // Buscar vendas da loja no intervalo
+    const dataFilter = {
+      data_venda: {
+        gte: inicio,
+        lte: fim,
+      },
+    };
+
     const vendas = await prisma.venda.findMany({
       where: {
         loja_id: lojaId,
         situacao: true,
-        data_venda: {
-          gte: inicio,
-          lte: fim,
-        },
+        ...dataFilter,
       },
       skip: pagina * quantidade,
       take: quantidade,
@@ -97,7 +102,7 @@ class LojaService {
             quantidade: true,
             produto: {
               select: {
-                id: true,
+                nome: true,
                 marca: {
                   select: {
                     id: true,
@@ -111,35 +116,16 @@ class LojaService {
       },
     });
 
-    // Contagem total para paginação
     const dataTotal = await prisma.venda.count({
       where: {
         loja_id: lojaId,
         situacao: true,
-        data_venda: {
-          gte: inicio,
-          lte: fim,
-        },
+        ...dataFilter,
       },
     });
 
     const pageInfo = getPageInfo(dataTotal, pagina, quantidade);
 
-    if (!vendas || vendas.length === 0) {
-      return {
-        result: {
-          id: lojaId,
-          nome_fantasia: "",
-          razao_social: "",
-          pontos_totais: 0,
-          marca: [],
-          vendedores: [],
-        },
-        pageInfo,
-      };
-    }
-
-    // Pegar dados da loja
     const loja = await prisma.loja.findUnique({
       where: { id: lojaId },
       select: {
@@ -149,91 +135,148 @@ class LojaService {
       },
     });
 
-    // Inicializar mapas
-    const vendedoresMap = new Map<
+    if (!loja) {
+      throw new Error("Loja não encontrada");
+    }
+
+    let pontos_totais = 0;
+    let pontos_totais_tratamento = 0;
+    let pontos_totais_coloracao = 0;
+
+    const marcasMap = new Map<
       number,
       {
         id: number;
         nome: string;
-        email: string;
-        tipo_pessoa: string;
         quantidade: number;
+        pontos_tratamento: number;
+        pontos_coloracao: number;
       }
     >();
-    const marcasMap = new Map<
+
+    const vendedoresMap = new Map<
       number,
-      { id: number; nome: string; quantidade: number }
+      {
+        nome: string;
+        quantidade: number;
+        pontos_totais_tratamento: number;
+        pontos_totais_coloracao: number;
+      }
     >();
 
-    let pontosTotais = 0;
-
-    // IDs únicos de funcionários
     const funcionarioIds = Array.from(
-      new Set(vendas.map((v) => v.funcionario_id).filter((id) => id !== null))
+      new Set(vendas.map((v) => v.funcionario_id).filter(Boolean))
     ) as number[];
 
-    // Buscar funcionários
-    const usuariosFromDb = await prisma.usuario.findMany({
+    const usuarios = await prisma.usuario.findMany({
       where: { id: { in: funcionarioIds } },
       select: {
         id: true,
         nome: true,
-        email: true,
-        tipo_pessoa: true,
       },
     });
 
-    // Inicializar vendedores
-    usuariosFromDb.forEach((user) => {
-      vendedoresMap.set(user.id, { ...user, quantidade: 0 });
+    usuarios.forEach((usuario) => {
+      vendedoresMap.set(usuario.id, {
+        nome: usuario.nome,
+        quantidade: 0,
+        pontos_totais_tratamento: 0,
+        pontos_totais_coloracao: 0,
+      });
     });
 
-    // Acumular quantidades
     for (const venda of vendas) {
-      const funcionarioId = venda.funcionario_id;
-
-      const qtdTotalVenda = venda.venda_detalhe.reduce(
-        (acc, vd) => acc + vd.quantidade,
-        0
-      );
-      pontosTotais += qtdTotalVenda;
-
-      if (funcionarioId && vendedoresMap.has(funcionarioId)) {
-        const vendedorAtual = vendedoresMap.get(funcionarioId)!;
-        vendedorAtual.quantidade += qtdTotalVenda;
-        vendedoresMap.set(funcionarioId, vendedorAtual);
-      }
+      let totalVenda = 0;
+      let pontosTratamentoVenda = 0;
+      let pontosColoracaoVenda = 0;
 
       for (const detalhe of venda.venda_detalhe) {
         const qtd = detalhe.quantidade;
-        const marca = detalhe.produto.marca;
+        const nomeProduto = detalhe.produto?.nome ?? "";
 
-        if (marca) {
-          const marcaAtual = marcasMap.get(marca.id) ?? {
-            id: marca.id,
-            nome: marca.nome,
-            quantidade: 0,
-          };
-          marcaAtual.quantidade += qtd;
-          marcasMap.set(marca.id, marcaAtual);
+        pontos_totais += qtd;
+        totalVenda += qtd;
+
+        const isTratamento = nomeProduto.startsWith("T ");
+        const isColoracao = nomeProduto.startsWith("C ");
+
+        if (isTratamento) {
+          pontos_totais_tratamento += qtd;
+          pontosTratamentoVenda += qtd;
+        } else if (isColoracao) {
+          pontos_totais_coloracao += qtd;
+          pontosColoracaoVenda += qtd;
         }
+
+        const marca = detalhe.produto?.marca;
+        if (marca) {
+          if (!marcasMap.has(marca.id)) {
+            marcasMap.set(marca.id, {
+              id: marca.id,
+              nome: marca.nome,
+              quantidade: 0,
+              pontos_tratamento: 0,
+              pontos_coloracao: 0,
+            });
+          }
+
+          const marcaData = marcasMap.get(marca.id)!;
+          marcaData.quantidade += qtd;
+          if (isTratamento) marcaData.pontos_tratamento += qtd;
+          if (isColoracao) marcaData.pontos_coloracao += qtd;
+        }
+      }
+
+      const vendedorId = venda.funcionario_id;
+      if (vendedorId && vendedoresMap.has(vendedorId)) {
+        const v = vendedoresMap.get(vendedorId)!;
+        v.quantidade += totalVenda;
+        v.pontos_totais_tratamento += pontosTratamentoVenda;
+        v.pontos_totais_coloracao += pontosColoracaoVenda;
       }
     }
 
-    const vendedoresFinal = Array.from(vendedoresMap.values()).sort(
-      (a, b) => b.quantidade - a.quantidade
-    );
-    const marcasFinal = Array.from(marcasMap.values()).sort(
-      (a, b) => b.quantidade - a.quantidade
-    );
+    const vendedoresFinal = Array.from(vendedoresMap.values())
+      .map((v) => ({
+        ...v,
+        pontos_totais_tratamento: v.pontos_totais_tratamento ?? 0,
+        pontos_totais_coloracao: v.pontos_totais_coloracao ?? 0,
+      }))
+      .sort((a, b) => b.quantidade - a.quantidade);
+
+    const marcasFinal = Array.from(marcasMap.values())
+      .map((m) => ({
+        ...m,
+        pontos_tratamento: m.pontos_tratamento ?? 0,
+        pontos_coloracao: m.pontos_coloracao ?? 0,
+      }))
+      .sort((a, b) => b.quantidade - a.quantidade);
+
+    if (vendas.length === 0 || pontos_totais === 0) {
+      return {
+        result: {
+          id: loja.id,
+          nome_fantasia: loja.nome_fantasia,
+          razao_social: loja.razao_social,
+          pontos_totais: 0,
+          pontos_totais_coloracao: 0,
+          pontos_totais_tratamento: 0,
+          marcas: [],
+          vendedores: [],
+        },
+        pageInfo,
+      };
+    }
 
     return {
       result: {
-        id: loja!.id,
-        nome_fantasia: loja!.nome_fantasia,
-        razao_social: loja!.razao_social,
-        pontos_totais: pontosTotais,
-        marca: marcasFinal,
+        id: loja.id,
+        nome_fantasia: loja.nome_fantasia,
+        razao_social: loja.razao_social,
+        pontos_totais,
+        pontos_totais_coloracao,
+        pontos_totais_tratamento,
+        marcas: marcasFinal,
         vendedores: vendedoresFinal,
       },
       pageInfo,

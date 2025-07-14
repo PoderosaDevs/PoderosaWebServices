@@ -108,6 +108,8 @@ class UsuarioService {
     pagina: number = 0,
     quantidade: number = 10
   ) {
+    console.log("➡️ Início da função getUserSalesById");
+
     const parseDate = (dateStr: string) =>
       parse(dateStr, "dd/MM/yyyy", new Date());
 
@@ -115,6 +117,8 @@ class UsuarioService {
     const fim = endDate
       ? endOfDay(parseDate(endDate))
       : endOfDay(endOfMonth(new Date()));
+
+    console.log("📆 Filtro de datas:", { inicio, fim });
 
     const dataFilter = {
       data_venda: {
@@ -134,8 +138,11 @@ class UsuarioService {
     });
 
     if (!usuario) {
+      console.error("❌ Usuário não encontrado:", userId);
       throw new Error("Usuário não encontrado");
     }
+
+    console.log("👤 Usuário encontrado:", usuario);
 
     const vendas = await prisma.venda.findMany({
       where: {
@@ -161,6 +168,8 @@ class UsuarioService {
       },
     });
 
+    console.log("🧾 Vendas encontradas:", vendas.length);
+
     const dataTotal = await prisma.venda.count({
       where: {
         funcionario_id: userId,
@@ -178,10 +187,13 @@ class UsuarioService {
     };
 
     if (!vendas || vendas.length === 0) {
+      console.warn("⚠️ Nenhuma venda encontrada");
       return {
         result: {
           ...usuario,
           pontos_totais: 0,
+          pontos_totais_tratamento: 0,
+          pontos_totais_coloracao: 0,
           marcas: [],
           lojas: [],
         },
@@ -193,26 +205,8 @@ class UsuarioService {
     let pontos_totais_tratamento = 0;
     let pontos_totais_coloracao = 0;
 
-    const marcasMap = new Map<
-      number,
-      {
-        id: number;
-        nome: string;
-        quantidade: number;
-        pontos_tratamento: number;
-        pontos_coloracao: number;
-      }
-    >();
-    const lojasMap = new Map<
-      number,
-      {
-        id: number;
-        nome: string;
-        quantidade: number;
-        pontos_tratamento: number;
-        pontos_coloracao: number;
-      }
-    >();
+    const marcasMap = new Map();
+    const lojasMap = new Map();
 
     for (const venda of vendas) {
       let totalVenda = 0;
@@ -278,15 +272,40 @@ class UsuarioService {
       }
     }
 
+    console.log("✅ Totais calculados:", {
+      pontos_totais,
+      pontos_totais_tratamento,
+      pontos_totais_coloracao,
+    });
+
+    if (!vendas || vendas.length === 0 || pontos_totais === 0) {
+      console.warn("⚠️ Vendas vazias ou pontos totais zerados");
+      return {
+        result: {
+          ...usuario,
+          pontos_totais: 0,
+          pontos_totais_tratamento: 0,
+          pontos_totais_coloracao: 0,
+          marcas: [],
+          lojas: [],
+        },
+        pageInfo,
+      };
+    }
+
+    const result = {
+      ...usuario,
+      pontos_totais,
+      pontos_totais_tratamento,
+      pontos_totais_coloracao,
+      marcas: Array.from(marcasMap.values()),
+      lojas: Array.from(lojasMap.values()),
+    };
+
+    console.log("✅ Resultado final montado", result);
+
     return {
-      result: {
-        ...usuario,
-        pontos_totais,
-        pontos_totais_tratamento,
-        pontos_totais_coloracao,
-        marcas: Array.from(marcasMap.values()),
-        lojas: Array.from(lojasMap.values()),
-      },
+      result,
       pageInfo,
     };
   }
@@ -343,25 +362,23 @@ class UsuarioService {
 
     const pageInfo = getPageInfo(dataTotal, pagina, quantidade);
 
-    // Calcular pontos e filtrar quem vendeu mais que 0
-    const result = usuarios
-      .map((usuario) => {
-        const pontos_totais = usuario.vendas.reduce((total, venda) => {
-          return (
-            total +
-            venda.venda_detalhe.reduce((soma, vd) => soma + vd.quantidade, 0)
-          );
-        }, 0);
+    // Calcular pontos (sem filtrar os que têm 0)
+    const result = usuarios.map((usuario) => {
+      const pontos_totais = usuario.vendas.reduce((total, venda) => {
+        return (
+          total +
+          venda.venda_detalhe.reduce((soma, vd) => soma + vd.quantidade, 0)
+        );
+      }, 0);
 
-        return {
-          id: usuario.id,
-          nome: usuario.nome,
-          email: usuario.email,
-          tipo_pessoa: usuario.tipo_pessoa,
-          pontos_totais,
-        };
-      })
-      .filter((usuario) => usuario.pontos_totais > 0); // apenas quem vendeu mais que 0
+      return {
+        id: usuario.id,
+        nome: usuario.nome,
+        email: usuario.email,
+        tipo_pessoa: usuario.tipo_pessoa,
+        pontos_totais,
+      };
+    });
 
     return {
       result,

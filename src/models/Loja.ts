@@ -20,7 +20,6 @@ export class LojaDeleteModel {
   id!: number;
 }
 
-
 @ObjectType()
 export class LojaResult {
   @Field(() => [LojaModel])
@@ -30,9 +29,6 @@ export class LojaResult {
   pageInfo!: PaginationInfo;
 }
 
-
-
-
 @ObjectType()
 class VendedoresModel {
   @Field()
@@ -40,6 +36,12 @@ class VendedoresModel {
 
   @Field(() => Int)
   quantidade!: number;
+
+    @Field(() => Int)
+  pontos_totais_coloracao!: number;
+
+  @Field(() => Int)
+  pontos_totais_tratamento!: number;
 }
 
 @ObjectType()
@@ -56,8 +58,14 @@ export class LojaInsights {
   @Field(() => Int)
   pontos_totais!: number;
 
+  @Field(() => Int)
+  pontos_totais_coloracao!: number;
+
+  @Field(() => Int)
+  pontos_totais_tratamento!: number;
+
   @Field(() => [MarcaVendaModel])
-  marca!: MarcaVendaModel[];
+  marcas!: MarcaVendaModel[];
 
   @Field(() => [VendedoresModel])
   vendedores!: VendedoresModel[];
