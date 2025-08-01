@@ -225,7 +225,6 @@ class VendaServices {
     }
   }
 
-
   // Cria uma nova venda
   async create(data: VendaInput) {
     const funcionario = await prisma.usuario.findUnique({
@@ -401,19 +400,28 @@ class VendaServices {
     return vendaFinalizada;
   }
 
-  // Deleta uma venda (define a situação como inativa)
   async delete(id: number) {
     const venda = await prisma.venda.findUnique({
       where: { id },
+      include: {
+        venda_detalhe: true,
+      },
     });
 
     if (!venda) {
       throw new GraphQLError("Venda não encontrada.");
     }
 
-    const deletedVenda = await prisma.venda.update({
+    // Deleta todos os detalhes da venda
+    await prisma.venda_detalhe.deleteMany({
+      where: {
+        venda_id: id,
+      },
+    });
+
+    // Deleta a venda principal
+    const deletedVenda = await prisma.venda.delete({
       where: { id },
-      data: { situacao: false },
     });
 
     return deletedVenda;

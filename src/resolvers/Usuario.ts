@@ -91,4 +91,14 @@ export class UsuarioResolver {
 
     return usuario;
   }
+
+  @Mutation(() => UsuarioModel, { nullable: true })
+  async RecoveryUsuario(
+    @Arg("id") id: number,
+    @Arg("senha") senha: string
+  ) {
+    const usuario = UsuarioService.recovery(id, senha);
+
+    return usuario;
+  }
 }

@@ -479,6 +479,28 @@ class UsuarioService {
 
     return { message: "Usuário desativado com sucesso!", user };
   }
+
+  async recovery(id: number, novaSenha: string) {
+    // Busca o usuário pelo ID
+    const user = await prisma.usuario.findUnique({
+      where: { id },
+    });
+
+    if (!user) {
+      throw new GraphQLError("Usuário não encontrado!");
+    }
+
+    // Criptografa a nova senha
+    const hashedPassword = await HashPassword(novaSenha, 10);
+
+    // Atualiza a senha do usuário
+    await prisma.usuario.update({
+      where: { id },
+      data: { senha: hashedPassword },
+    });
+
+    return { message: "Senha atualizada com sucesso!" };
+  }
 }
 
 export default new UsuarioService();
