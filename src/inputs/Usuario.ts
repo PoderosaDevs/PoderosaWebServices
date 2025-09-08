@@ -65,6 +65,17 @@ export class UsuarioInsightsFiltroInput {
   quantidade?: number;
 }
 
+@InputType()
+export class UsuarioInsightsGastosInput {
+  @Field(() => Number, { nullable: false })
+  userId!: number;
+
+  @Field(() => String, { nullable: true })
+  startDate?: string; // dd/MM/yyyy
+
+  @Field(() => String, { nullable: true })
+  endDate?: string; // dd/MM/yyyy
+}
 
 @InputType()
 export class RankingUsuariosFiltroInput {

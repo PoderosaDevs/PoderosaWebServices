@@ -1,13 +1,24 @@
 // src/services/UsuarioService.ts
 import { prisma } from "../database";
 import { v4 } from "uuid";
-import { UsuarioFiltroInput, UsuarioInput } from "../inputs/Usuario";
+import {
+  UsuarioFiltroInput,
+  UsuarioInput,
+  UsuarioInsightsGastosInput,
+} from "../inputs/Usuario";
 import { EmailValidation } from "../snippets/ValidationEmail";
 import { HashPassword } from "../snippets/ValidationPassword";
 import { GraphQLError } from "graphql";
 import { TypePerson } from "../enums/TypePerson";
 import { Prisma, type_person } from "@prisma/client";
-import { startOfMonth, endOfMonth, parse, endOfDay, format } from "date-fns";
+import {
+  startOfMonth,
+  endOfMonth,
+  parse,
+  endOfDay,
+  format,
+  isValid,
+} from "date-fns";
 import { Pagination } from "../inputs/Utils";
 import getPageInfo from "../helpers/getPageInfo";
 import { PaginationInfo } from "../models/Utils";
@@ -49,7 +60,6 @@ type PeriodType = "week" | "mounth" | "tree-mouth" | "year";
 
 type CategoriaResumo = { title: "tratamentos" | "colorações"; value: number };
 type DiaResumo = { data: string; categories: CategoriaResumo[] };
-
 
 class UsuarioService {
   async get(tipo_pessoa?: TypePerson) {
@@ -540,101 +550,77 @@ class UsuarioService {
 
     return { message: "Senha atualizada com sucesso!" };
   }
-  // Mantendo as chaves originais ("mounth", "tree-mouth")
-   async VendasPeriodos(type: PeriodType, usuarioId: number): Promise<DiaResumo[]> {
-    // ==== 1. período + granularidade ====
-    const todayStr = isoDay(new Date());
-    let startStr: string;
-    let groupBy: "day" | "month";
 
-    switch (type) {
-      case "week": {
-        startStr = addDaysToDateStr(todayStr, -6);
-        groupBy = "day";
-        break;
-      }
-      case "mounth": {
-        const today = toUtcMidnight(todayStr);
-        const firstOfMonth = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1));
-        startStr = isoDay(firstOfMonth);
-        groupBy = "day";
-        break;
-      }
-      case "tree-mouth": {
-        const today = toUtcMidnight(todayStr);
-        const firstTwoMonthsAgo = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - 2, 1));
-        startStr = isoDay(firstTwoMonthsAgo);
-        groupBy = "month";
-        break;
-      }
-      case "year": {
-        const today = toUtcMidnight(todayStr);
-        const firstOfYear = new Date(Date.UTC(today.getUTCFullYear(), 0, 1));
-        startStr = isoDay(firstOfYear);
-        groupBy = "month";
-        break;
-      }
-      default:
-        throw new Error("Tipo de período inválido");
+  async VendasPeriodos(
+    userId: number,
+    startDate?: string,
+    endDate?: string
+  ): Promise<DiaResumo[]> {
+    // ==== 1. define datas ====
+    let start: Date;
+    let end: Date;
+
+    if (startDate) {
+      start = parse(startDate, "dd/MM/yyyy", new Date());
+      if (!isValid(start)) throw new Error("startDate inválida");
+    } else {
+      start = startOfMonth(new Date());
     }
 
-    const { gte, lt } = buildDateRangeByDay(startStr, todayStr);
+    if (endDate) {
+      end = parse(endDate, "dd/MM/yyyy", new Date());
+      if (!isValid(end)) throw new Error("endDate inválida");
+    } else {
+      end = endOfMonth(new Date());
+    }
+
+    // limite exclusivo do Prisma
+    const gte = start;
+    const lt = new Date(end.getTime() + 24 * 60 * 60 * 1000);
 
     // ==== 2. busca Prisma ====
     const vendas = await prisma.venda.findMany({
       where: {
-        funcionario_id: usuarioId,
+        funcionario_id: userId,
         data_venda: { gte, lt },
       },
       include: {
-        venda_detalhe: { include: { produto: true } }, // produto precisa ter a "categoria" tipo "T Wella" / "C Alfaparf"
+        venda_detalhe: { include: { produto: true } },
       },
     });
 
-    // ==== 3. agregação: colapsar por T/C -> tratamentos/colorações ====
-    // mapaPorChave = { "yyyy-MM-dd|yyyy-MM": { tratamentos: number, colorações: number } }
-    const mapa: Record<string, { tratamentos: number; "colorações": number }> = {};
+    // ==== 3. agregação ====
+    const mapa: Record<string, { tratamentos: number; colorações: number }> =
+      {};
 
     for (const venda of vendas) {
-      const key =
-        groupBy === "day"
-          ? format(venda.data_venda, "yyyy-MM-dd")
-          : format(venda.data_venda, "yyyy-MM");
+      const key = format(venda.data_venda, "yyyy-MM-dd");
 
-      if (!mapa[key]) mapa[key] = { tratamentos: 0, "colorações": 0 };
+      if (!mapa[key]) mapa[key] = { tratamentos: 0, colorações: 0 };
 
       for (const det of venda.venda_detalhe) {
-        // Supondo que venha algo como "T Wella", "C Alfaparf"
-        const rotulo: string = String(det.produto?.nome ?? "").trim();
-        const inicial = rotulo.charAt(0).toUpperCase(); // "T" ou "C" (ou outra coisa)
+        const rotulo = String(det.produto?.nome ?? "").trim();
+        const inicial = rotulo.charAt(0).toUpperCase();
 
-        if (inicial === "T") {
+        if (inicial === "T")
           mapa[key].tratamentos += Number(det.quantidade ?? 0);
-        } else if (inicial === "C") {
-          mapa[key]["colorações"] += Number(det.quantidade ?? 0);
-        } else {
-          // Se quiser tratar "Outros", comente/descomente:
-          // mapa[key].tratamentos += 0; // mantém como está
-        }
+        else if (inicial === "C")
+          mapa[key].colorações += Number(det.quantidade ?? 0);
       }
     }
 
-    // ==== 4. saída ordenada por data ====
-    const ordenar = (a: string, b: string) => a.localeCompare(b);
-    const chavesOrdenadas = Object.keys(mapa).sort(ordenar);
+    // ==== 4. formata resposta ====
+    const chavesOrdenadas = Object.keys(mapa).sort((a, b) =>
+      a.localeCompare(b)
+    );
 
     const resposta: DiaResumo[] = chavesOrdenadas.map((key) => {
       const bucket = mapa[key];
+      const dataFmt = format(new Date(key), "dd/MM/yyyy", { locale: ptBR });
 
-      const dataFmt =
-        groupBy === "day"
-          ? format(new Date(key), "dd/MM/yyyy", { locale: ptBR })
-          : format(new Date(key + "-01"), "MM/yyyy", { locale: ptBR });
-
-      // Sempre retorna as DUAS categorias, mesmo que 0
       const categories: CategoriaResumo[] = [
         { title: "tratamentos", value: bucket.tratamentos },
-        { title: "colorações", value: bucket["colorações"] },
+        { title: "colorações", value: bucket.colorações },
       ];
 
       return { data: dataFmt, categories };

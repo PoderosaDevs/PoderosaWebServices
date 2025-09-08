@@ -11,6 +11,7 @@ import {
   UsuarioFiltroInput,
   UsuarioInsightsFiltroInput,
   RankingUsuariosFiltroInput,
+  UsuarioInsightsGastosInput,
 } from "../inputs/Usuario";
 import UsuarioService from "../services/Usuario";
 import { TypePerson } from "../enums/TypePerson";
@@ -51,15 +52,17 @@ export class UsuarioResolver {
     );
   }
 
- @Query(() => [GastosPeriodosResponse]) // <- retorna lista
+  @Query(() => [GastosPeriodosResponse])
   async GetInsightsGastosPeriodos(
-    @Arg("type", () => String) type: "week" | "mounth" | "tree-mouth" | "year",
-    @Arg("usuarioId", () => Int) usuarioId: number // <- precisa do usuário
+    @Arg("filters", { nullable: true }) filters: UsuarioInsightsGastosInput
   ): Promise<GastosPeriodosResponse[]> {
-    const vendas = await UsuarioService.VendasPeriodos(type, usuarioId);
+    const vendas = await UsuarioService.VendasPeriodos(
+      filters.userId,
+      filters?.startDate,
+      filters?.endDate
+    );
     return vendas;
   }
-
 
   @Query(() => UsuarioModel, { nullable: true })
   async GetUsuarioByID(@Arg("id") id: number) {
@@ -104,10 +107,7 @@ export class UsuarioResolver {
   }
 
   @Mutation(() => UsuarioModel, { nullable: true })
-  async RecoveryUsuario(
-    @Arg("id") id: number,
-    @Arg("senha") senha: string
-  ) {
+  async RecoveryUsuario(@Arg("id") id: number, @Arg("senha") senha: string) {
     const usuario = UsuarioService.recovery(id, senha);
 
     return usuario;
