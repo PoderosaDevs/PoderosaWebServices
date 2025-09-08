@@ -7,10 +7,49 @@ import { HashPassword } from "../snippets/ValidationPassword";
 import { GraphQLError } from "graphql";
 import { TypePerson } from "../enums/TypePerson";
 import { Prisma, type_person } from "@prisma/client";
-import { startOfMonth, endOfMonth, parse, endOfDay } from "date-fns";
+import { startOfMonth, endOfMonth, parse, endOfDay, format } from "date-fns";
 import { Pagination } from "../inputs/Utils";
 import getPageInfo from "../helpers/getPageInfo";
 import { PaginationInfo } from "../models/Utils";
+import { GastosPeriodosResponse } from "../models/Usuario";
+import { ptBR } from "date-fns/locale";
+
+function isoDay(date: Date): string {
+  // "2025-08-08"
+  return date.toISOString().slice(0, 10);
+}
+
+function toUtcMidnight(dateStrYYYYMMDD: string): Date {
+  // "2025-08-08" -> 2025-08-08T00:00:00.000Z
+  return new Date(`${dateStrYYYYMMDD}T00:00:00.000Z`);
+}
+
+function addDaysToDateStr(dateStrYYYYMMDD: string, days: number): string {
+  const d = toUtcMidnight(dateStrYYYYMMDD);
+  d.setUTCDate(d.getUTCDate() + days);
+  return isoDay(d);
+}
+
+function buildDateRangeByDay(
+  startISO: string,
+  endISO?: string
+): { gte: Date; lt: Date } {
+  // Recebe strings ISO (com ou sem "Z"). Corta para "YYYY-MM-DD".
+  const startDay = startISO.split("T")[0]; // "YYYY-MM-DD"
+  const endDay = (endISO ?? startISO).split("T")[0];
+
+  const gte = toUtcMidnight(startDay);
+  // intervalo exclusivo no fim (dia seguinte 00:00Z)
+  const endNextDay = addDaysToDateStr(endDay, 1);
+  const lt = toUtcMidnight(endNextDay);
+
+  return { gte, lt };
+}
+type PeriodType = "week" | "mounth" | "tree-mouth" | "year";
+
+type CategoriaResumo = { title: "tratamentos" | "colorações"; value: number };
+type DiaResumo = { data: string; categories: CategoriaResumo[] };
+
 
 class UsuarioService {
   async get(tipo_pessoa?: TypePerson) {
@@ -500,6 +539,108 @@ class UsuarioService {
     });
 
     return { message: "Senha atualizada com sucesso!" };
+  }
+  // Mantendo as chaves originais ("mounth", "tree-mouth")
+   async VendasPeriodos(type: PeriodType, usuarioId: number): Promise<DiaResumo[]> {
+    // ==== 1. período + granularidade ====
+    const todayStr = isoDay(new Date());
+    let startStr: string;
+    let groupBy: "day" | "month";
+
+    switch (type) {
+      case "week": {
+        startStr = addDaysToDateStr(todayStr, -6);
+        groupBy = "day";
+        break;
+      }
+      case "mounth": {
+        const today = toUtcMidnight(todayStr);
+        const firstOfMonth = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1));
+        startStr = isoDay(firstOfMonth);
+        groupBy = "day";
+        break;
+      }
+      case "tree-mouth": {
+        const today = toUtcMidnight(todayStr);
+        const firstTwoMonthsAgo = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - 2, 1));
+        startStr = isoDay(firstTwoMonthsAgo);
+        groupBy = "month";
+        break;
+      }
+      case "year": {
+        const today = toUtcMidnight(todayStr);
+        const firstOfYear = new Date(Date.UTC(today.getUTCFullYear(), 0, 1));
+        startStr = isoDay(firstOfYear);
+        groupBy = "month";
+        break;
+      }
+      default:
+        throw new Error("Tipo de período inválido");
+    }
+
+    const { gte, lt } = buildDateRangeByDay(startStr, todayStr);
+
+    // ==== 2. busca Prisma ====
+    const vendas = await prisma.venda.findMany({
+      where: {
+        funcionario_id: usuarioId,
+        data_venda: { gte, lt },
+      },
+      include: {
+        venda_detalhe: { include: { produto: true } }, // produto precisa ter a "categoria" tipo "T Wella" / "C Alfaparf"
+      },
+    });
+
+    // ==== 3. agregação: colapsar por T/C -> tratamentos/colorações ====
+    // mapaPorChave = { "yyyy-MM-dd|yyyy-MM": { tratamentos: number, colorações: number } }
+    const mapa: Record<string, { tratamentos: number; "colorações": number }> = {};
+
+    for (const venda of vendas) {
+      const key =
+        groupBy === "day"
+          ? format(venda.data_venda, "yyyy-MM-dd")
+          : format(venda.data_venda, "yyyy-MM");
+
+      if (!mapa[key]) mapa[key] = { tratamentos: 0, "colorações": 0 };
+
+      for (const det of venda.venda_detalhe) {
+        // Supondo que venha algo como "T Wella", "C Alfaparf"
+        const rotulo: string = String(det.produto?.nome ?? "").trim();
+        const inicial = rotulo.charAt(0).toUpperCase(); // "T" ou "C" (ou outra coisa)
+
+        if (inicial === "T") {
+          mapa[key].tratamentos += Number(det.quantidade ?? 0);
+        } else if (inicial === "C") {
+          mapa[key]["colorações"] += Number(det.quantidade ?? 0);
+        } else {
+          // Se quiser tratar "Outros", comente/descomente:
+          // mapa[key].tratamentos += 0; // mantém como está
+        }
+      }
+    }
+
+    // ==== 4. saída ordenada por data ====
+    const ordenar = (a: string, b: string) => a.localeCompare(b);
+    const chavesOrdenadas = Object.keys(mapa).sort(ordenar);
+
+    const resposta: DiaResumo[] = chavesOrdenadas.map((key) => {
+      const bucket = mapa[key];
+
+      const dataFmt =
+        groupBy === "day"
+          ? format(new Date(key), "dd/MM/yyyy", { locale: ptBR })
+          : format(new Date(key + "-01"), "MM/yyyy", { locale: ptBR });
+
+      // Sempre retorna as DUAS categorias, mesmo que 0
+      const categories: CategoriaResumo[] = [
+        { title: "tratamentos", value: bucket.tratamentos },
+        { title: "colorações", value: bucket["colorações"] },
+      ];
+
+      return { data: dataFmt, categories };
+    });
+
+    return resposta;
   }
 }
 

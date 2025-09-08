@@ -1,9 +1,10 @@
-import { Resolver, Query, Mutation, Arg } from "type-graphql";
+import { Resolver, Query, Mutation, Arg, Int } from "type-graphql";
 import {
   UsuarioInsightsResult,
   UsuarioModel,
   UsuarioPontosModel,
   UsuarioPontosResult,
+  GastosPeriodosResponse,
 } from "../models/Usuario"; // Ajuste o caminho conforme necessário
 import {
   UsuarioInput,
@@ -49,6 +50,16 @@ export class UsuarioResolver {
       filters?.quantidade ?? 10
     );
   }
+
+ @Query(() => [GastosPeriodosResponse]) // <- retorna lista
+  async GetInsightsGastosPeriodos(
+    @Arg("type", () => String) type: "week" | "mounth" | "tree-mouth" | "year",
+    @Arg("usuarioId", () => Int) usuarioId: number // <- precisa do usuário
+  ): Promise<GastosPeriodosResponse[]> {
+    const vendas = await UsuarioService.VendasPeriodos(type, usuarioId);
+    return vendas;
+  }
+
 
   @Query(() => UsuarioModel, { nullable: true })
   async GetUsuarioByID(@Arg("id") id: number) {

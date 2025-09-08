@@ -1,4 +1,4 @@
-import { ObjectType, Field, ID, Int } from "type-graphql";
+import { ObjectType, Field, ID, Int, Float } from "type-graphql";
 import { TypePerson } from "../enums/TypePerson";
 import { PaginationInfo } from "./Utils";
 
@@ -177,4 +177,22 @@ export class UsuarioInsightsResult {
 
   @Field(() => PaginationInfo)
   pageInfo!: PaginationInfo;
+}
+
+@ObjectType()
+export class CategoriaResumo {
+  @Field()
+  title!: string;
+
+  @Field(() => Float)
+  value!: number;
+}
+
+@ObjectType()
+export class GastosPeriodosResponse {
+  @Field()
+  data!: string; // data formatada (dd/MM/yyyy ou MM/yyyy)
+
+  @Field(() => [CategoriaResumo])
+  categories!: CategoriaResumo[];
 }
