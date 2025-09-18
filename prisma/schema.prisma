@@ -172,12 +172,11 @@ model meta {
   marcaId   Int
   marca     marca   @relation(fields: [marcaId], references: [id])
 
-  usuarioId Int                
-  usuario   usuario @relation(fields: [usuarioId], references: [id])
+  usuarios  usuario[]
 
   meta_etapas meta_etapa[]
 
-  @@unique([marcaId, usuarioId, nome, data_inicio])
+  @@unique([marcaId, nome, data_inicio])
 }
 
 model meta_etapa {

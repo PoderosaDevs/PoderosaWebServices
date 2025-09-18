@@ -1,9 +1,4 @@
-import {
-  InputType,
-  Field,
-  Int,
-  GraphQLISODateTime,
-} from "type-graphql";
+import { InputType, Field, Int, GraphQLISODateTime } from "type-graphql";
 
 @InputType()
 export class MetaEtapaInput {
@@ -31,8 +26,8 @@ export class CreateMetaInput {
   @Field(() => GraphQLISODateTime)
   data_fim!: Date;
 
-  @Field(() => Int)
-  usuarioId!: number;         
+  @Field(() => [Int])
+  usuarioIds!: number[];
 
   @Field({ nullable: true })
   descricao?: string;
