@@ -45,38 +45,98 @@ export class MetaService {
    * Se `periodo` for omitido usa o mês atual.
    * Aceita strings "dd/MM/yyyy" ou objetos Date.
    */
+  // Service:
   async getMetasByUsuario(
     userId: number,
     periodo?: { inicio?: string | Date; fim?: string | Date }
   ) {
+    const fmt = (d?: Date | string | null) => {
+      if (!d) return d;
+      if (d instanceof Date)
+        return isNaN(+d) ? "Invalid Date" : d.toISOString();
+      return d; // string original antes do parse
+    };
+
+    console.debug("[MetaService.getMetasByUsuario] start", {
+      userId,
+      periodo_raw: {
+        inicio: fmt(periodo?.inicio ?? null),
+        fim: fmt(periodo?.fim ?? null),
+      },
+    });
+
     /* ---------- Validações ---------- */
     if (!Number.isFinite(userId) || userId <= 0) {
+      console.warn("[MetaService] invalid userId", { userId });
       throw new Error("ID de usuário inválido.");
     }
 
     let { inicio, fim } = periodo ?? {};
 
+    // Antes do parse
+    console.debug("[MetaService] before-parse", {
+      inicio: fmt(inicio ?? null),
+      fim: fmt(fim ?? null),
+    });
+
     if (typeof inicio === "string") inicio = this.parseDateBr(inicio);
     if (typeof fim === "string") fim = this.parseDateBr(fim);
 
-    if (!inicio || !fim) ({ inicio, fim } = this.getPeriodoPadrao());
+    // Se não veio período completo, usa padrão
+    if (!inicio || !fim) {
+      const padrao = this.getPeriodoPadrao();
+      inicio = inicio ?? padrao.inicio;
+      fim = fim ?? padrao.fim;
+      console.debug("[MetaService] applied-default-period", {
+        default_from_getPeriodoPadrao: {
+          inicio: fmt(padrao.inicio),
+          fim: fmt(padrao.fim),
+        },
+      });
+    }
+
+    // Normaliza fim para incluir o dia inteiro
+    if (fim instanceof Date && !isNaN(+fim)) {
+      fim = new Date(fim); // evita mutar referência externa
+      fim.setHours(23, 59, 59, 999);
+    }
+
+    console.debug("[MetaService] after-parse-and-normalization", {
+      inicio_iso: fmt(inicio as Date),
+      fim_iso: fmt(fim as Date),
+      inicio_ms: inicio instanceof Date ? +inicio : undefined,
+      fim_ms: fim instanceof Date ? +fim : undefined,
+    });
 
     if (!(inicio instanceof Date) || isNaN(+inicio)) {
+      console.error("[MetaService] invalid start date", {
+        inicio: fmt(inicio as any),
+      });
       throw new Error("Data de início inválida.");
     }
     if (!(fim instanceof Date) || isNaN(+fim)) {
+      console.error("[MetaService] invalid end date", { fim: fmt(fim as any) });
       throw new Error("Data de fim inválida.");
     }
 
-    // inclui o dia inteiro do fim
-    fim.setHours(23, 59, 59, 999);
-
     if (inicio > fim) {
+      console.warn("[MetaService] start-after-end", {
+        inicio: fmt(inicio),
+        fim: fmt(fim),
+      });
       throw new Error("A data de início não pode ser posterior à data de fim.");
     }
 
     /* ---------- Query ---------- */
     try {
+      console.info("[MetaService] querying metas", {
+        userId,
+        where_preview: {
+          usuarios_some_id: userId,
+          overlap: { data_inicio_lte: fmt(fim), data_fim_gte: fmt(inicio) },
+        },
+      });
+
       return await prisma.$transaction(async (tx) => {
         // 1) Metas do usuário dentro do período solicitado
         const metas = await tx.meta.findMany({
@@ -87,40 +147,79 @@ export class MetaService {
           include: {
             meta_etapas: true,
             marca: true,
-            // se quiser retornar também os usuários ligados à meta, descomente:
-            // usuarios: { select: { id: true, nome: true } },
           },
           orderBy: { data_fim: "asc" },
         });
 
-        if (metas.length === 0) return [];
+        console.info("[MetaService] metas found", {
+          userId,
+          count: metas.length,
+          search_period: { inicio: fmt(inicio), fim: fmt(fim) },
+        });
+
+        if (metas.length === 0) {
+          console.warn("[MetaService] no metas returned for filters", {
+            userId,
+            filters: {
+              usuarios_some_id: userId,
+              data_inicio_lte: fmt(fim),
+              data_fim_gte: fmt(inicio),
+            },
+          });
+          return [];
+        }
 
         // 2) Para cada meta, soma a quantidade vendida da respectiva marca
-        //    dentro do PERÍODO DA META (meta.data_inicio → meta.data_fim)
         const metasComAtual = await Promise.all(
           metas.map(async (meta) => {
+            console.debug("[MetaService] aggregating for meta", {
+              metaId: meta.id,
+              nome: meta.nome,
+              marcaId: meta.marcaId,
+              periodo_meta: {
+                inicio: fmt(meta.data_inicio),
+                fim: fmt(meta.data_fim),
+              },
+            });
+
             const agg = await tx.venda_detalhe.aggregate({
               where: {
                 venda: {
                   funcionario_id: userId,
                   data_venda: { gte: meta.data_inicio, lte: meta.data_fim },
-                  situacao: true, // somente vendas confirmadas
+                  situacao: true,
                 },
                 produto: { id_marca: meta.marcaId },
               },
               _sum: { quantidade: true },
             });
 
+            const quantidade_atual = agg._sum.quantidade ?? 0;
+
+            console.debug("[MetaService] aggregate result", {
+              metaId: meta.id,
+              quantidade_atual,
+            });
+
             return {
               ...meta,
-              quantidade_atual: agg._sum.quantidade ?? 0,
+              quantidade_atual,
             };
           })
         );
 
-        return metasComAtual; // sempre array
+        console.info("[MetaService] done", {
+          userId,
+          returned: metasComAtual.length,
+        });
+
+        return metasComAtual;
       });
     } catch (err) {
+      console.error("[MetaService] error while querying metas", {
+        userId,
+        error: err instanceof Error ? err.message : err,
+      });
       throw new Error(
         `Erro ao buscar metas para o usuário ${userId}: ${
           err instanceof Error ? err.message : "erro desconhecido"

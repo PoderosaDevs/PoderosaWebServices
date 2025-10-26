@@ -17,21 +17,39 @@ import { GraphQLString } from "graphql";
 @Resolver()
 export class MetaResolver {
   // Query para listar todas as metas de um usuário e suas etapas
+  // resolver:
   @Query(() => [MetaModel])
   async GetMetas(
     @Arg("usuarioId", () => Int) usuarioId: number,
-
-    // ► Agora strings no formato "dd/MM/yyyy"
     @Arg("data_inicio", () => GraphQLString, { nullable: true })
     data_inicio?: string,
-
-    @Arg("data_fim", () => GraphQLString, { nullable: true })
-    data_fim?: string
+    @Arg("data_fim", () => GraphQLString, { nullable: true }) data_fim?: string
   ) {
-    return MetaService.getMetasByUsuario(usuarioId, {
-      inicio: data_inicio,
-      fim: data_fim,
+    console.info("[GetMetas] called", {
+      usuarioId,
+      args: { data_inicio, data_fim },
+      ts: new Date().toISOString(),
     });
+
+    try {
+      const result = await MetaService.getMetasByUsuario(usuarioId, {
+        inicio: data_inicio,
+        fim: data_fim,
+      });
+
+      console.info("[GetMetas] result", {
+        usuarioId,
+        count: Array.isArray(result) ? result.length : 0,
+      });
+
+      return result;
+    } catch (err) {
+      console.error("[GetMetas] error", {
+        usuarioId,
+        error: err instanceof Error ? err.message : err,
+      });
+      throw err;
+    }
   }
 
   @Query(() => MetaModel, { nullable: true })
