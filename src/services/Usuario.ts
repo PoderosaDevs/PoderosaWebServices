@@ -2,6 +2,7 @@
 import { prisma } from "../database";
 import { v4 } from "uuid";
 import {
+  InsightTargetType,
   UsuarioFiltroInput,
   UsuarioInput,
   UsuarioInsightsGastosInput,
@@ -18,6 +19,8 @@ import {
   endOfDay,
   format,
   isValid,
+  addDays,
+  startOfDay,
 } from "date-fns";
 import { Pagination } from "../inputs/Utils";
 import getPageInfo from "../helpers/getPageInfo";
@@ -43,7 +46,7 @@ function addDaysToDateStr(dateStrYYYYMMDD: string, days: number): string {
 
 function buildDateRangeByDay(
   startISO: string,
-  endISO?: string
+  endISO?: string,
 ): { gte: Date; lt: Date } {
   // Recebe strings ISO (com ou sem "Z"). Corta para "YYYY-MM-DD".
   const startDay = startISO.split("T")[0]; // "YYYY-MM-DD"
@@ -142,7 +145,7 @@ class UsuarioService {
           usuario.vendas.length > 0
             ? usuario.vendas.reduce(
                 (total, venda) => total + venda.pontos_totais,
-                0
+                0,
               )
             : 0, // ✅ Define 0 para usuários sem vendas
       })),
@@ -155,7 +158,7 @@ class UsuarioService {
     startDate?: string,
     endDate?: string,
     pagina: number = 0,
-    quantidade: number = 10
+    quantidade: number = 10,
   ) {
     console.log("➡️ Início da função getUserSalesById");
 
@@ -363,7 +366,7 @@ class UsuarioService {
     startDate?: string,
     endDate?: string,
     pagina: number = 0,
-    quantidade: number = 10
+    quantidade: number = 10,
   ) {
     const parseDate = (dateStr: string) =>
       parse(dateStr, "dd/MM/yyyy", new Date());
@@ -509,7 +512,7 @@ class UsuarioService {
   async delete(id: number, tipo: type_person) {
     if (tipo === "EMPLOYEE") {
       throw new GraphQLError(
-        "Você não tem permissão para desativar o usuário!"
+        "Você não tem permissão para desativar o usuário!",
       );
     }
 
@@ -551,83 +554,100 @@ class UsuarioService {
     return { message: "Senha atualizada com sucesso!" };
   }
 
-  async VendasPeriodos(
-    userId: number,
-    startDate?: string,
-    endDate?: string
-  ): Promise<DiaResumo[]> {
-    // ==== 1. define datas ====
-    let start: Date;
-    let end: Date;
+async VendasPeriodos(
+  targetId: number,
+  startDate?: string,
+  endDate?: string,
+  type: InsightTargetType = InsightTargetType.USER,
+): Promise<any[]> {
+  const parseDate = (dateStr: string) => parse(dateStr, "dd/MM/yyyy", new Date());
 
-    if (startDate) {
-      start = parse(startDate, "dd/MM/yyyy", new Date());
-      if (!isValid(start)) throw new Error("startDate inválida");
-    } else {
-      start = startOfMonth(new Date());
-    }
+  const inicio = startDate ? startOfDay(parseDate(startDate)) : startOfMonth(new Date());
+  const fim = endDate ? endOfDay(parseDate(endDate)) : endOfDay(endOfMonth(new Date()));
 
-    if (endDate) {
-      end = parse(endDate, "dd/MM/yyyy", new Date());
-      if (!isValid(end)) throw new Error("endDate inválida");
-    } else {
-      end = endOfMonth(new Date());
-    }
+  if (startDate && !isValid(inicio)) throw new Error("startDate inválida");
+  if (endDate && !isValid(fim)) throw new Error("endDate inválida");
 
-    // limite exclusivo do Prisma
-    const gte = start;
-    const lt = new Date(end.getTime() + 24 * 60 * 60 * 1000);
+  const whereClause: any = {
+    situacao: true,
+    data_venda: {
+      gte: inicio,
+      lte: fim,
+    },
+  };
 
-    // ==== 2. busca Prisma ====
-    const vendas = await prisma.venda.findMany({
-      where: {
-        funcionario_id: userId,
-        data_venda: { gte, lt },
+  switch (type) {
+    case InsightTargetType.STORE:
+      whereClause.loja_id = targetId; // CORRIGIDO: de id_loja para loja_id
+      break;
+
+    case InsightTargetType.BRAND:
+      whereClause.venda_detalhe = {
+        some: {
+          produto: { id_marca: targetId },
+        },
+      };
+      break;
+
+    case InsightTargetType.USER:
+    default:
+      whereClause.funcionario_id = targetId;
+      break;
+  }
+
+  const vendas = await prisma.venda.findMany({
+    where: whereClause,
+    include: {
+      venda_detalhe: {
+        where: type === InsightTargetType.BRAND ? {
+          produto: { id_marca: targetId }
+        } : {},
+        include: {
+          produto: true,
+        },
       },
-      include: {
-        venda_detalhe: { include: { produto: true } },
-      },
-    });
+    },
+  });
 
-    // ==== 3. agregação ====
-    const mapa: Record<string, { tratamentos: number; colorações: number }> =
-      {};
+  const mapa: Record<string, { tratamentos: number; coloracoes: number }> = {};
 
-    for (const venda of vendas) {
-      const key = format(venda.data_venda, "yyyy-MM-dd");
+  for (const venda of vendas) {
+    const key = format(venda.data_venda, "yyyy-MM-dd");
+    if (!mapa[key]) mapa[key] = { tratamentos: 0, coloracoes: 0 };
 
-      if (!mapa[key]) mapa[key] = { tratamentos: 0, colorações: 0 };
+    for (const det of venda.venda_detalhe) {
+      if (type === InsightTargetType.BRAND && det.produto?.id_marca !== targetId) {
+        continue;
+      }
 
-      for (const det of venda.venda_detalhe) {
-        const rotulo = String(det.produto?.nome ?? "").trim();
-        const inicial = rotulo.charAt(0).toUpperCase();
+      const nomeProduto = String(det.produto?.nome ?? "").trim().toUpperCase();
+      const quantidade = Number(det.quantidade ?? 0);
 
-        if (inicial === "T")
-          mapa[key].tratamentos += Number(det.quantidade ?? 0);
-        else if (inicial === "C")
-          mapa[key].colorações += Number(det.quantidade ?? 0);
+      if (nomeProduto.startsWith("T ")) {
+        mapa[key].tratamentos += quantidade;
+      } else if (nomeProduto.startsWith("C ")) {
+        mapa[key].coloracoes += quantidade;
       }
     }
-
-    // ==== 4. formata resposta ====
-    const chavesOrdenadas = Object.keys(mapa).sort((a, b) =>
-      a.localeCompare(b)
-    );
-
-    const resposta: DiaResumo[] = chavesOrdenadas.map((key) => {
-      const bucket = mapa[key];
-      const dataFmt = format(new Date(key), "dd/MM/yyyy", { locale: ptBR });
-
-      const categories: CategoriaResumo[] = [
-        { title: "tratamentos", value: bucket.tratamentos },
-        { title: "colorações", value: bucket.colorações },
-      ];
-
-      return { data: dataFmt, categories };
-    });
-
-    return resposta;
   }
+
+  const chavesOrdenadas = Object.keys(mapa).sort();
+
+  return chavesOrdenadas.map((key) => {
+    const bucket = mapa[key];
+    const [year, month, day] = key.split("-").map(Number);
+    const dataObj = new Date(year, month - 1, day);
+    const dataFmt = format(dataObj, "dd/MM/yyyy");
+
+    return {
+      data: dataFmt,
+      categories: [
+        { title: "tratamentos", value: bucket.tratamentos },
+        { title: "colorações", value: bucket.coloracoes },
+      ],
+    };
+  });
+}
 }
 
 export default new UsuarioService();

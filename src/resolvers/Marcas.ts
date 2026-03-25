@@ -2,8 +2,8 @@
 
 import { Resolver, Mutation, Query, Arg, Int } from 'type-graphql';
 import MarcaService from '../services/Marca';
-import { BrandInsightsResponse, MarcaModel } from '../models/Marca';
-import { BrandsInsightsFilterInput } from '../inputs/Marca';
+import { BrandInsightsResponse, MarcaInsightsResult, MarcaModel } from '../models/Marca';
+import { BrandsInsightsFilterInput, MarcaInsightsFiltroInput } from '../inputs/Marca';
 
 @Resolver()
 export class MarcaResolver {
@@ -23,6 +23,19 @@ export class MarcaResolver {
       filters?.quantidade ?? 10
     );
   }
+
+   @Query(() => MarcaInsightsResult)
+    async GetMarcaInsights(
+      @Arg("filters", { nullable: true }) filters?: MarcaInsightsFiltroInput
+    ) {
+      return await MarcaService.getBrandSalesById(
+        filters!.marcaId!,
+        filters?.startDate,
+        filters?.endDate,
+        filters?.pagina ?? 0,
+        filters?.quantidade ?? 10
+      );
+    }
 
   @Query(() => MarcaModel)
   async GetMarcaByID(@Arg("id", () => Int) id: number) {

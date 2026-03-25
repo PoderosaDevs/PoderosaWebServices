@@ -4,7 +4,7 @@ import { PrismaClient } from "@prisma/client";
 import { GraphQLError } from "graphql";
 import getPageInfo from "../helpers/getPageInfo";
 import { BrandInsightsResponse } from "../models/Marca";
-import { endOfMonth, parse, startOfMonth } from "date-fns";
+import { endOfDay, endOfMonth, parse, startOfMonth } from "date-fns";
 
 const prisma = new PrismaClient();
 
@@ -144,6 +144,154 @@ class MarcaServices {
   async delete(id: number) {
     return prisma.marca.delete({ where: { id } });
   }
+
+async getBrandSalesById(
+  marcaId: number,
+  startDate?: string,
+  endDate?: string,
+  pagina: number = 0,
+  quantidade: number = 10
+) {
+  const parseDate = (dateStr: string) => parse(dateStr, "dd/MM/yyyy", new Date());
+
+  const inicio = startDate ? parseDate(startDate) : startOfMonth(new Date());
+  const fim = endDate ? endOfDay(parseDate(endDate)) : endOfDay(endOfMonth(new Date()));
+
+  const dataFilter = {
+    situacao: true,
+    data_venda: {
+      gte: inicio,
+      lte: fim,
+    },
+    venda_detalhe: {
+      some: {
+        produto: { id_marca: marcaId },
+      },
+    },
+  };
+
+  // 1. Busca global para TOTAIS e RANKINGS (Sem paginação)
+  const todasVendasMarca = await prisma.venda.findMany({
+    where: dataFilter,
+    select: {
+      loja_id: true,
+      funcionario_id: true,
+      venda_detalhe: {
+        where: { produto: { id_marca: marcaId } },
+        select: {
+          quantidade: true,
+          produto: { select: { nome: true } },
+        },
+      },
+    },
+  });
+
+  // 2. Busca paginada apenas para a LISTA de vendas (Se necessário retornar lista)
+  const vendasPaginadas = await prisma.venda.findMany({
+    where: dataFilter,
+    skip: pagina * quantidade,
+    take: quantidade,
+    orderBy: { data_venda: 'desc' }
+  });
+
+  const dataTotal = await prisma.venda.count({ where: dataFilter });
+  const pageInfo = getPageInfo(dataTotal, pagina, quantidade);
+
+  const marcaInfo = await prisma.marca.findUnique({
+    where: { id: marcaId },
+    select: { id: true, nome: true },
+  });
+
+  if (!marcaInfo) throw new Error("Marca não encontrada");
+
+  let pontos_totais = 0;
+  let pontos_totais_tratamento = 0;
+  let pontos_totais_coloracao = 0;
+
+  const lojasMap = new Map<number, any>();
+  const vendedoresMap = new Map<number, any>();
+
+  // 3. Processamento sobre TODAS as vendas do período
+  for (const venda of todasVendasMarca) {
+    let totalVendaMarca = 0;
+    let tratamentoVenda = 0;
+    let coloracaoVenda = 0;
+
+    for (const detalhe of venda.venda_detalhe) {
+      const qtd = Number(detalhe.quantidade ?? 0);
+      const nomeProd = String(detalhe.produto?.nome ?? "").toUpperCase();
+      
+      const isTratamento = nomeProd.startsWith("T ");
+      const isColoracao = nomeProd.startsWith("C ");
+
+      totalVendaMarca += qtd;
+      if (isTratamento) tratamentoVenda += qtd;
+      if (isColoracao) coloracaoVenda += qtd;
+    }
+
+    pontos_totais += totalVendaMarca;
+    pontos_totais_tratamento += tratamentoVenda;
+    pontos_totais_coloracao += coloracaoVenda;
+
+    // Agregação de Lojas
+    if (venda.loja_id) {
+      const current = lojasMap.get(venda.loja_id) || { pontos_totais: 0, pontos_totais_tratamento: 0, pontos_totais_coloracao: 0 };
+      lojasMap.set(venda.loja_id, {
+        ...current,
+        pontos_totais: current.pontos_totais + totalVendaMarca,
+        pontos_totais_tratamento: current.pontos_totais_tratamento + tratamentoVenda,
+        pontos_totais_coloracao: current.pontos_totais_coloracao + coloracaoVenda,
+      });
+    }
+
+    // Agregação de Vendedores
+    if (venda.funcionario_id) {
+      const current = vendedoresMap.get(venda.funcionario_id) || { quantidade: 0, pontos_totais_tratamento: 0, pontos_totais_coloracao: 0 };
+      vendedoresMap.set(venda.funcionario_id, {
+        ...current,
+        quantidade: current.quantidade + totalVendaMarca,
+        pontos_totais_tratamento: current.pontos_totais_tratamento + tratamentoVenda,
+        pontos_totais_coloracao: current.pontos_totais_coloracao + coloracaoVenda,
+      });
+    }
+  }
+
+  // 4. Hidratação de nomes (Busca apenas os envolvidos)
+  const [lojasDb, usuariosDb] = await Promise.all([
+    prisma.loja.findMany({
+      where: { id: { in: Array.from(lojasMap.keys()) } },
+      select: { id: true, nome_fantasia: true }
+    }),
+    prisma.usuario.findMany({
+      where: { id: { in: Array.from(vendedoresMap.keys()) } },
+      select: { id: true, nome: true }
+    })
+  ]);
+
+  const lojasFinal = lojasDb.map(l => ({
+    ...lojasMap.get(l.id),
+    nome_fantasia: l.nome_fantasia
+  })).sort((a, b) => b.pontos_totais - a.pontos_totais);
+
+  const vendedoresFinal = usuariosDb.map(u => ({
+    ...vendedoresMap.get(u.id),
+    nome: u.nome
+  })).sort((a, b) => b.quantidade - a.quantidade);
+
+  return {
+    result: {
+      id: marcaInfo.id,
+      nome: marcaInfo.nome,
+      pontos_totais,
+      pontos_totais_coloracao,
+      pontos_totais_tratamento,
+      lojas: lojasFinal,
+      vendedores: vendedoresFinal,
+    },
+    pageInfo,
+  };
+}
+  
 }
 
 export default new MarcaServices();

@@ -55,3 +55,25 @@ export class BrandsInsightsFilterInput {
   @Field(() => Int, { nullable: true, defaultValue: 10 })
   quantidade?: number;
 }
+
+
+
+@InputType()
+export class MarcaInsightsFiltroInput {
+  @Field(() => String, { nullable: true })
+  startDate?: string; // Formato esperado: dd/MM/yyyy
+
+  @Field(() => String, { nullable: true })
+  endDate?: string; // Formato esperado: dd/MM/yyyy
+
+  @Field(() => Number, { nullable: false })
+  marcaId!: number;
+
+  @Field(() => Int, { nullable: true, defaultValue: 0 })
+  pagina?: number;
+
+  @Field(() => Int, { nullable: true, defaultValue: 10 })
+  quantidade?: number;
+
+  
+}

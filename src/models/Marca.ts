@@ -46,3 +46,71 @@ export class BrandInsightsResponse {
   @Field(() => PaginationInfo) // 
   pageInfo!: PaginationInfo;
 }
+
+
+
+@ObjectType()
+class LojasDaMarcaModel {
+  @Field(() => Int)
+  id!: number;
+
+  @Field(() => String)
+  nome_fantasia!: string;
+
+  @Field(() => Int)
+  pontos_totais!: number;
+
+  @Field(() => Int)
+  pontos_totais_coloracao!: number;
+
+  @Field(() => Int)
+  pontos_totais_tratamento!: number;
+}
+
+@ObjectType()
+class VendedoresDaMarcaModel {
+  @Field()
+  nome!: string;
+
+  @Field(() => Int)
+  quantidade!: number;
+
+  @Field(() => Int)
+  pontos_totais_coloracao!: number;
+
+  @Field(() => Int)
+  pontos_totais_tratamento!: number;
+}
+
+@ObjectType()
+export class MarcaInsights {
+  @Field(() => Int)
+  id!: number;
+
+  @Field(() => String)
+  nome!: string;
+
+  @Field(() => Int)
+  pontos_totais!: number;
+
+  @Field(() => Int)
+  pontos_totais_coloracao!: number;
+
+  @Field(() => Int)
+  pontos_totais_tratamento!: number;
+
+  @Field(() => [LojasDaMarcaModel])
+  lojas!: LojasDaMarcaModel[];
+
+  @Field(() => [VendedoresDaMarcaModel])
+  vendedores!: VendedoresDaMarcaModel[];
+}
+
+@ObjectType()
+export class MarcaInsightsResult {
+  @Field(() => MarcaInsights)
+  result!: MarcaInsights;
+
+  @Field(() => PaginationInfo)
+  pageInfo!: PaginationInfo;
+}

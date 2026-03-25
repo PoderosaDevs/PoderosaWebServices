@@ -57,9 +57,10 @@ export class UsuarioResolver {
     @Arg("filters", { nullable: true }) filters: UsuarioInsightsGastosInput
   ): Promise<GastosPeriodosResponse[]> {
     const vendas = await UsuarioService.VendasPeriodos(
-      filters.userId,
+      filters.targetId!,
       filters?.startDate,
-      filters?.endDate
+      filters?.endDate,
+      filters.type
     );
     return vendas;
   }

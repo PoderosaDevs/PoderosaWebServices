@@ -65,16 +65,25 @@ export class UsuarioInsightsFiltroInput {
   quantidade?: number;
 }
 
+export enum InsightTargetType {
+  USER = "USER",
+  STORE = "STORE",
+  BRAND = "BRAND",
+}
+
 @InputType()
 export class UsuarioInsightsGastosInput {
   @Field(() => Number, { nullable: false })
-  userId!: number;
+  targetId!: number;
 
   @Field(() => String, { nullable: true })
   startDate?: string; // dd/MM/yyyy
 
   @Field(() => String, { nullable: true })
   endDate?: string; // dd/MM/yyyy
+
+  @Field(() => String, { nullable: true })
+  type?: InsightTargetType; 
 }
 
 @InputType()
