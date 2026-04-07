@@ -154,213 +154,123 @@ class UsuarioService {
   }
 
   async getUserSalesById(
-    userId: number,
-    startDate?: string,
-    endDate?: string,
-    pagina: number = 0,
-    quantidade: number = 10,
-  ) {
-    console.log("➡️ Início da função getUserSalesById");
+  userId: number,
+  startDate?: string,
+  endDate?: string,
+  pagina: number = 0,
+  quantidade: number = 10,
+) {
+  const parseDate = (dateStr: string) => parse(dateStr, "dd/MM/yyyy", new Date());
 
-    const parseDate = (dateStr: string) =>
-      parse(dateStr, "dd/MM/yyyy", new Date());
+  const inicio = startDate ? parseDate(startDate) : startOfMonth(new Date());
+  const fim = endDate ? endOfDay(parseDate(endDate)) : endOfDay(endOfMonth(new Date()));
 
-    const inicio = startDate ? parseDate(startDate) : startOfMonth(new Date());
-    const fim = endDate
-      ? endOfDay(parseDate(endDate))
-      : endOfDay(endOfMonth(new Date()));
+  const dataFilter = {
+    funcionario_id: userId,
+    data_venda: { gte: inicio, lte: fim },
+  };
 
-    console.log("📆 Filtro de datas:", { inicio, fim });
+  const usuario = await prisma.usuario.findUnique({
+    where: { id: userId },
+    select: { id: true, nome: true, email: true, tipo_pessoa: true },
+  });
 
-    const dataFilter = {
-      data_venda: {
-        gte: inicio,
-        lte: fim,
-      },
-    };
+  if (!usuario) throw new Error("Usuário não encontrado");
 
-    const usuario = await prisma.usuario.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        nome: true,
-        email: true,
-        tipo_pessoa: true,
-      },
-    });
+  // Busca totalizadora para paginação
+  const dataTotal = await prisma.venda.count({ where: { ...dataFilter, situacao: true } });
 
-    if (!usuario) {
-      console.error("❌ Usuário não encontrado:", userId);
-      throw new Error("Usuário não encontrado");
-    }
-
-    console.log("👤 Usuário encontrado:", usuario);
-
-    const vendas = await prisma.venda.findMany({
-      where: {
-        funcionario_id: userId,
-        ...dataFilter,
-      },
-      include: {
-        loja: {
-          select: {
-            id: true,
-            nome_fantasia: true,
-          },
-        },
-        venda_detalhe: {
-          include: {
-            produto: {
-              include: {
-                marca: true,
-              },
-            },
-          },
-        },
-      },
-    });
-
-    console.log("🧾 Vendas encontradas:", vendas.length);
-
-    const dataTotal = await prisma.venda.count({
-      where: {
-        funcionario_id: userId,
-        situacao: true,
-        ...dataFilter,
-      },
-    });
-
-    const pageInfo: PaginationInfo = {
-      currentPage: pagina,
-      totalPages: Math.ceil(dataTotal / quantidade),
-      totalItems: dataTotal,
-      hasNextPage: pagina * quantidade + quantidade < dataTotal,
-      hasPreviousPage: pagina > 0,
-    };
-
-    if (!vendas || vendas.length === 0) {
-      console.warn("⚠️ Nenhuma venda encontrada");
-      return {
-        result: {
-          ...usuario,
-          pontos_totais: 0,
-          pontos_totais_tratamento: 0,
-          pontos_totais_coloracao: 0,
-          marcas: [],
-          lojas: [],
-        },
-        pageInfo,
-      };
-    }
-
-    let pontos_totais = 0;
-    let pontos_totais_tratamento = 0;
-    let pontos_totais_coloracao = 0;
-
-    const marcasMap = new Map();
-    const lojasMap = new Map();
-
-    for (const venda of vendas) {
-      let totalVenda = 0;
-      let pontosTratamentoVenda = 0;
-      let pontosColoracaoVenda = 0;
-
-      for (const detalhe of venda.venda_detalhe) {
-        const qtd = detalhe.quantidade;
-        const nomeProduto = detalhe.produto?.nome ?? "";
-
-        pontos_totais += qtd;
-        totalVenda += qtd;
-
-        const isTratamento = nomeProduto.startsWith("T ");
-        const isColoracao = nomeProduto.startsWith("C ");
-
-        if (isTratamento) {
-          pontos_totais_tratamento += qtd;
-          pontosTratamentoVenda += qtd;
-        } else if (isColoracao) {
-          pontos_totais_coloracao += qtd;
-          pontosColoracaoVenda += qtd;
-        }
-
-        const marca = detalhe.produto?.marca;
-        if (marca) {
-          if (!marcasMap.has(marca.id)) {
-            marcasMap.set(marca.id, {
-              id: marca.id,
-              nome: marca.nome,
-              quantidade: 0,
-              pontos_tratamento: 0,
-              pontos_coloracao: 0,
-            });
-          }
-
-          const marcaData = marcasMap.get(marca.id)!;
-          marcaData.quantidade += qtd;
-          if (isTratamento) {
-            marcaData.pontos_tratamento += qtd;
-          } else if (isColoracao) {
-            marcaData.pontos_coloracao += qtd;
+  const vendas = await prisma.venda.findMany({
+    where: dataFilter,
+    skip: pagina * quantidade,
+    take: quantidade,
+    select: {
+      id: true,
+      loja: { select: { id: true, nome_fantasia: true } },
+      venda_detalhe: {
+        select: {
+          quantidade: true,
+          produto: {
+            select: {
+              nome: true,
+              marca: { select: { id: true, nome: true } }
+            }
           }
         }
       }
+    }
+  });
 
-      const loja = venda.loja;
-      if (loja) {
-        if (!lojasMap.has(loja.id)) {
-          lojasMap.set(loja.id, {
-            id: loja.id,
-            nome: loja.nome_fantasia ?? "Loja sem nome",
-            quantidade: 0,
-            pontos_tratamento: 0,
-            pontos_coloracao: 0,
-          });
-        }
+  const pageInfo: PaginationInfo = {
+    currentPage: pagina,
+    totalPages: Math.ceil(dataTotal / quantidade),
+    totalItems: dataTotal,
+    hasNextPage: (pagina + 1) * quantidade < dataTotal,
+    hasPreviousPage: pagina > 0,
+  };
 
-        const lojaData = lojasMap.get(loja.id)!;
-        lojaData.quantidade += totalVenda;
-        lojaData.pontos_tratamento += pontosTratamentoVenda;
-        lojaData.pontos_coloracao += pontosColoracaoVenda;
+  const stats = {
+    pontos_totais: 0,
+    pontos_totais_tratamento: 0,
+    pontos_totais_coloracao: 0,
+    marcasMap: new Map<number, any>(),
+    lojasMap: new Map<number, any>()
+  };
+
+  for (const venda of vendas) {
+    let totalVenda = 0;
+    let pontosTratamentoVenda = 0;
+    let pontosColoracaoVenda = 0;
+
+    for (const detalhe of venda.venda_detalhe) {
+      const qtd = detalhe.quantidade;
+      const nome = detalhe.produto?.nome?.toUpperCase() ?? "";
+      const marca = detalhe.produto?.marca;
+
+      const isTratamento = nome.startsWith("T ");
+      const isColoracao = nome.startsWith("C ");
+
+      stats.pontos_totais += qtd;
+      totalVenda += qtd;
+
+      if (isTratamento) {
+        stats.pontos_totais_tratamento += qtd;
+        pontosTratamentoVenda += qtd;
+      } else if (isColoracao) {
+        stats.pontos_totais_coloracao += qtd;
+        pontosColoracaoVenda += qtd;
+      }
+
+      if (marca) {
+        const mData = stats.marcasMap.get(marca.id) || { id: marca.id, nome: marca.nome, quantidade: 0, pontos_tratamento: 0, pontos_coloracao: 0 };
+        mData.quantidade += qtd;
+        if (isTratamento) mData.pontos_tratamento += qtd;
+        if (isColoracao) mData.pontos_coloracao += qtd;
+        stats.marcasMap.set(marca.id, mData);
       }
     }
 
-    console.log("✅ Totais calculados:", {
-      pontos_totais,
-      pontos_totais_tratamento,
-      pontos_totais_coloracao,
-    });
-
-    if (!vendas || vendas.length === 0 || pontos_totais === 0) {
-      console.warn("⚠️ Vendas vazias ou pontos totais zerados");
-      return {
-        result: {
-          ...usuario,
-          pontos_totais: 0,
-          pontos_totais_tratamento: 0,
-          pontos_totais_coloracao: 0,
-          marcas: [],
-          lojas: [],
-        },
-        pageInfo,
-      };
+    if (venda.loja) {
+      const lData = stats.lojasMap.get(venda.loja.id) || { id: venda.loja.id, nome: venda.loja.nome_fantasia ?? "Loja sem nome", quantidade: 0, pontos_tratamento: 0, pontos_coloracao: 0 };
+      lData.quantidade += totalVenda;
+      lData.pontos_tratamento += pontosTratamentoVenda;
+      lData.pontos_coloracao += pontosColoracaoVenda;
+      stats.lojasMap.set(venda.loja.id, lData);
     }
-
-    const result = {
-      ...usuario,
-      pontos_totais,
-      pontos_totais_tratamento,
-      pontos_totais_coloracao,
-      marcas: Array.from(marcasMap.values()),
-      lojas: Array.from(lojasMap.values()),
-    };
-
-    console.log("✅ Resultado final montado", result);
-
-    return {
-      result,
-      pageInfo,
-    };
   }
+
+  return {
+    result: {
+      ...usuario,
+      pontos_totais: stats.pontos_totais,
+      pontos_totais_tratamento: stats.pontos_totais_tratamento,
+      pontos_totais_coloracao: stats.pontos_totais_coloracao,
+      marcas: Array.from(stats.marcasMap.values()),
+      lojas: Array.from(stats.lojasMap.values()),
+    },
+    pageInfo,
+  };
+}
 
   async getRankingUserSales(
     startDate?: string,
