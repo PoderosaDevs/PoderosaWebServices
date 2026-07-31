@@ -6,6 +6,7 @@ import { ApolloServer } from "apollo-server-express";
 import { createSchema } from "./schema"; // Ajuste o caminho conforme necessário
 import { prisma } from "./database";
 import cors from "cors"; // Importa o CORS
+import { sendErrorAlert } from "./services/mailService";
 
 const app = express();
 
@@ -16,6 +17,20 @@ app.use(
     credentials: true,
   })
 );
+
+// Rota para receber erros reportados pelo frontend (Error Boundary / window listeners)
+app.post("/error-report", express.json(), async (req, res) => {
+  const { message, stack, url } = req.body;
+  const userAgent = req.headers["user-agent"];
+
+  try {
+    await sendErrorAlert({ message, stack, url, userAgent });
+  } catch (err) {
+    console.error("Falha ao enviar email de erro (frontend):", err);
+  }
+
+  res.status(202).json({ received: true });
+});
 
 const startServer = async () => {
   try {
@@ -40,6 +55,24 @@ const startServer = async () => {
       schema,
       persistedQueries: false, // Para evitar ataques de negação de serviço
       cache: "bounded", // Define cache limitado para maior segurança
+      formatError: (error) => {
+        // Envia alerta por email para erros vindos dos resolvers (GraphQL)
+        sendErrorAlert({
+          message: error.message,
+          stack:
+            (error.extensions?.exception?.stacktrace as string[] | undefined)?.join("\n") ??
+            error.stack,
+          path: error.path?.join("."),
+        }).catch((err) =>
+          console.error("Falha ao enviar email de erro (GraphQL):", err)
+        );
+
+        // Em produção, não expõe stack trace/detalhes internos pro client
+        if (process.env.NODE_ENV === "production") {
+          return { message: error.message, path: error.path } as typeof error;
+        }
+        return error;
+      },
     });
 
     // Aguarde o servidor Apollo ser iniciado
