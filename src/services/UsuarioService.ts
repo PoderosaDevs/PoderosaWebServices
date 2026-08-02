@@ -110,6 +110,8 @@ class UsuarioService {
       };
     });
 
+    result.sort((a, b) => b.pontos_totais - a.pontos_totais);
+
     return { result, pageInfo: buildPageInfo(dataTotal, pagina, quantidade) };
   }
 
@@ -213,8 +215,8 @@ class UsuarioService {
         pontos_totais: stats.pontos_totais,
         pontos_totais_tratamento: stats.pontos_totais_tratamento,
         pontos_totais_coloracao: stats.pontos_totais_coloracao,
-        marcas: Array.from(stats.marcasMap.values()),
-        lojas: Array.from(stats.lojasMap.values()),
+        marcas: Array.from(stats.marcasMap.values()).sort((a, b) => b.quantidade - a.quantidade),
+        lojas: Array.from(stats.lojasMap.values()).sort((a, b) => b.quantidade - a.quantidade),
       },
       pageInfo: buildPageInfo(dataTotal, pagina, quantidade),
     };

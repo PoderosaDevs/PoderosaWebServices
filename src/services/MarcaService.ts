@@ -51,6 +51,8 @@ class MarcaService {
       return { id: marca.id, nome: marca.nome, total_vendas };
     });
 
+    result.sort((a, b) => b.total_vendas - a.total_vendas);
+
     return { result, pageInfo: buildPageInfo(dataTotal, pagina, quantidade) };
   }
 
