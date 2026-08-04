@@ -1,4 +1,4 @@
-import { Op } from "sequelize";
+import { Op, Transaction } from "sequelize";
 import { sequelize } from "../config/database";
 import { Loja, Produto, Usuario, Venda, VendaDetalhe } from "../database/models";
 import { ApiError } from "../utils/apiError";
@@ -72,8 +72,8 @@ class VendaService {
     return { result: resultOrdenado, pageInfo: buildPageInfo(lojas.length, pagina, quantidade) };
   }
 
-  async getByID(id: number) {
-    const venda = await Venda.findByPk(id, { include: includeCompleto });
+  async getByID(id: number, transaction?: Transaction) {
+    const venda = await Venda.findByPk(id, { include: includeCompleto, transaction });
     if (!venda) throw ApiError.notFound("Venda nao encontrada.");
     return venda;
   }
@@ -144,7 +144,7 @@ class VendaService {
         { transaction: t }
       );
 
-      return this.getByID(venda.id);
+      return this.getByID(venda.id, t);
     });
   }
 
@@ -197,7 +197,7 @@ class VendaService {
 
       await venda.update({ pontos_totais: pontosTotaisAtualizados }, { transaction: t });
 
-      return this.getByID(id);
+      return this.getByID(id, t);
     });
   }
 
