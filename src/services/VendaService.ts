@@ -3,7 +3,7 @@ import { sequelize } from "../config/database";
 import { Loja, Produto, Usuario, Venda, VendaDetalhe } from "../database/models";
 import { ApiError } from "../utils/apiError";
 import { buildPageInfo } from "../utils/pagination";
-import { normalizarDataPara10h, parseDateBr } from "../utils/date";
+import { normalizarDataPara10h, parseDateBr, resolvePeriodo } from "../utils/date";
 import { TipoPessoa } from "../types/enums";
 
 interface VendaDetalheInput {
@@ -30,13 +30,11 @@ const includeCompleto = [
 ];
 
 class VendaService {
-  async get(startDate?: Date, endDate?: Date) {
-    const where: Record<string, unknown> = {};
-    if (startDate && endDate) {
-      where.data_venda = { [Op.gte]: startDate, [Op.lte]: endDate };
-    } else if (startDate) {
-      where.data_venda = startDate;
-    }
+  async get(startDate?: string, endDate?: string, funcionarioId?: number, lojaId?: number) {
+    const { inicio, fim } = resolvePeriodo(startDate, endDate);
+    const where: Record<string, unknown> = { data_venda: { [Op.gte]: inicio, [Op.lte]: fim } };
+    if (funcionarioId) where.funcionario_id = funcionarioId;
+    if (lojaId) where.loja_id = lojaId;
 
     return Venda.findAll({ where, include: includeCompleto, order: [["data_venda", "DESC"]] });
   }

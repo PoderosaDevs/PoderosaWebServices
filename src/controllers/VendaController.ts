@@ -3,10 +3,12 @@ import VendaService from "../services/VendaService";
 import { asyncHandler } from "../utils/asyncHandler";
 
 export const list = asyncHandler(async (req: Request, res: Response) => {
-  const { startDate, endDate } = req.query as Record<string, string>;
+  const { startDate, endDate, funcionarioId, lojaId } = req.query as Record<string, string>;
   const vendas = await VendaService.get(
-    startDate ? new Date(startDate) : undefined,
-    endDate ? new Date(endDate) : undefined
+    startDate,
+    endDate,
+    funcionarioId ? Number(funcionarioId) : undefined,
+    lojaId ? Number(lojaId) : undefined
   );
   res.json(vendas);
 });
