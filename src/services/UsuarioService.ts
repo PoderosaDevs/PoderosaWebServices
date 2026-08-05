@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from "uuid";
 import { Op, WhereOptions } from "sequelize";
 import { endOfDay, endOfMonth, format, startOfDay, startOfMonth } from "date-fns";
+import { sequelize } from "../config/database";
 import { Marca, Produto, Usuario, Venda, VendaDetalhe, Loja } from "../database/models";
 import { ApiError } from "../utils/apiError";
 import { comparePassword, hashPassword } from "../utils/password";
@@ -28,8 +29,10 @@ interface UsuarioInput {
 }
 
 class UsuarioService {
-  async get(tipo_pessoa?: TipoPessoa) {
-    const where: WhereOptions = { situacao: true, ...(tipo_pessoa ? { tipo_pessoa } : {}) };
+  async get(tipo_pessoa?: TipoPessoa, status: "ativos" | "inativos" | "todos" = "ativos") {
+    const where: WhereOptions = { ...(tipo_pessoa ? { tipo_pessoa } : {}) };
+    if (status === "ativos") where.situacao = true;
+    else if (status === "inativos") where.situacao = false;
     return Usuario.findAll({ where, order: [["nome", "ASC"]] });
   }
 
@@ -319,14 +322,33 @@ class UsuarioService {
     return { message: "Senha atualizada com sucesso!" };
   }
 
+  // Exclusao permanente: remove o usuario e, em cascata, todas as vendas
+  // (e respectivos itens) registradas por ele. Nao ha "desativar" mais -
+  // decisao do negocio de que um colaborador removido nao deve manter
+  // historico de vendas associado a ele no sistema.
   async delete(id: number, tipoSolicitante: TipoPessoa) {
     if (tipoSolicitante === TipoPessoa.EMPLOYEE) {
-      throw ApiError.forbidden("Voce nao tem permissao para desativar o usuario!");
+      throw ApiError.forbidden("Voce nao tem permissao para excluir o usuario!");
     }
 
     const usuario = await this.getByID(id);
-    await usuario.update({ situacao: false, updated_at: new Date() });
-    return { message: "Usuario desativado com sucesso!", usuario };
+
+    return sequelize.transaction(async (t) => {
+      const vendas = await Venda.findAll({ where: { funcionario_id: id }, attributes: ["id"], transaction: t });
+      const vendaIds = vendas.map((v) => v.id);
+
+      if (vendaIds.length > 0) {
+        await VendaDetalhe.destroy({ where: { venda_id: { [Op.in]: vendaIds } }, transaction: t });
+        await Venda.destroy({ where: { id: { [Op.in]: vendaIds } }, transaction: t });
+      }
+
+      await usuario.destroy({ transaction: t });
+
+      return {
+        message: `Usuario excluido permanentemente junto com ${vendaIds.length} venda(s).`,
+        vendasExcluidas: vendaIds.length,
+      };
+    });
   }
 
   async recovery(id: number, novaSenha: string) {

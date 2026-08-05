@@ -26,6 +26,7 @@ router.get("/", VendaController.list);
 router.get("/lojas-insights", VendaController.lojasInsights);
 router.get("/:id", VendaController.getById);
 router.get("/usuario/:usuarioId", VendaController.getByUsuario);
+router.get("/usuario/:usuarioId/count", VendaController.countByUsuario);
 
 router.post("/", validate({ body: vendaBodySchema }), VendaController.create);
 router.put(

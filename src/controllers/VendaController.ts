@@ -35,6 +35,11 @@ export const getByUsuario = asyncHandler(async (req: Request, res: Response) => 
   res.json(vendas);
 });
 
+export const countByUsuario = asyncHandler(async (req: Request, res: Response) => {
+  const count = await VendaService.countByFuncionario(Number(req.params.usuarioId));
+  res.json({ count });
+});
+
 export const create = asyncHandler(async (req: Request, res: Response) => {
   const venda = await VendaService.create(req.body);
   res.status(201).json(venda);

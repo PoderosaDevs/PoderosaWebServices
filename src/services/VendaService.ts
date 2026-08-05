@@ -70,6 +70,10 @@ class VendaService {
     return { result: resultOrdenado, pageInfo: buildPageInfo(lojas.length, pagina, quantidade) };
   }
 
+  async countByFuncionario(funcionarioId: number) {
+    return Venda.count({ where: { funcionario_id: funcionarioId } });
+  }
+
   async getByID(id: number, transaction?: Transaction) {
     const venda = await Venda.findByPk(id, { include: includeCompleto, transaction });
     if (!venda) throw ApiError.notFound("Venda nao encontrada.");

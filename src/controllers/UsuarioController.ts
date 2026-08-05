@@ -5,7 +5,7 @@ import { ApiError } from "../utils/apiError";
 import { TipoPessoa } from "../types/enums";
 
 export const list = asyncHandler(async (req: Request, res: Response) => {
-  const usuarios = await UsuarioService.get(req.query.tipo_pessoa as any);
+  const usuarios = await UsuarioService.get(req.query.tipo_pessoa as any, req.query.status as any);
   res.json(usuarios);
 });
 
