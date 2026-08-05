@@ -44,11 +44,20 @@ class MarcaService {
 
     const result = marcas.map((marca) => {
       const produtos = (marca.get("produtos") as any[]) ?? [];
-      const total_vendas = produtos.reduce((total, produto) => {
+      let total_vendas = 0;
+      let total_tratamento = 0;
+      let total_coloracao = 0;
+
+      for (const produto of produtos) {
         const detalhes = produto.venda_detalhe ?? [];
-        return total + detalhes.reduce((soma: number, vd: any) => soma + vd.quantidade, 0);
-      }, 0);
-      return { id: marca.id, nome: marca.nome, total_vendas };
+        const qtd = detalhes.reduce((soma: number, vd: any) => soma + vd.quantidade, 0);
+        total_vendas += qtd;
+        const nomeProd = String(produto.nome ?? "").toUpperCase();
+        if (nomeProd.startsWith("T ")) total_tratamento += qtd;
+        else if (nomeProd.startsWith("C ")) total_coloracao += qtd;
+      }
+
+      return { id: marca.id, nome: marca.nome, total_vendas, total_tratamento, total_coloracao };
     });
 
     result.sort((a, b) => b.total_vendas - a.total_vendas);

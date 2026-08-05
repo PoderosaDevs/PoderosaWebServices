@@ -86,7 +86,14 @@ class UsuarioService {
           as: "vendas",
           required: false,
           where: { situacao: true, data_venda: { [Op.gte]: inicio, [Op.lte]: fim } },
-          include: [{ model: VendaDetalhe, as: "venda_detalhe", attributes: ["quantidade"] }],
+          include: [
+            {
+              model: VendaDetalhe,
+              as: "venda_detalhe",
+              attributes: ["quantidade"],
+              include: [{ model: Produto, as: "produto", attributes: ["nome"] }],
+            },
+          ],
         },
       ],
       offset: pagina * quantidade,
@@ -95,11 +102,21 @@ class UsuarioService {
     });
 
     const result = usuarios.map((usuario) => {
-      const vendas = (usuario.get("vendas") as Venda[] | undefined) ?? [];
-      const pontos_totais = vendas.reduce((total, venda) => {
-        const detalhes = (venda.get("venda_detalhe") as VendaDetalhe[] | undefined) ?? [];
-        return total + detalhes.reduce((soma, vd) => soma + vd.quantidade, 0);
-      }, 0);
+      const vendas = (usuario.get("vendas") as any[] | undefined) ?? [];
+      let pontos_totais = 0;
+      let pontos_totais_tratamento = 0;
+      let pontos_totais_coloracao = 0;
+
+      for (const venda of vendas) {
+        const detalhes = (venda.venda_detalhe as any[]) ?? [];
+        for (const vd of detalhes) {
+          const qtd = vd.quantidade ?? 0;
+          pontos_totais += qtd;
+          const nomeProd = String(vd.produto?.nome ?? "").toUpperCase();
+          if (nomeProd.startsWith("T ")) pontos_totais_tratamento += qtd;
+          else if (nomeProd.startsWith("C ")) pontos_totais_coloracao += qtd;
+        }
+      }
 
       return {
         id: usuario.id,
@@ -107,6 +124,8 @@ class UsuarioService {
         email: usuario.email,
         tipo_pessoa: usuario.tipo_pessoa,
         pontos_totais,
+        pontos_totais_tratamento,
+        pontos_totais_coloracao,
       };
     });
 

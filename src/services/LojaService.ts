@@ -49,7 +49,14 @@ class LojaService {
           as: "vendas",
           required: false,
           where: { situacao: true, data_venda: { [Op.gte]: inicio, [Op.lte]: fim } },
-          include: [{ model: VendaDetalhe, as: "venda_detalhe", attributes: ["quantidade"] }],
+          include: [
+            {
+              model: VendaDetalhe,
+              as: "venda_detalhe",
+              attributes: ["quantidade"],
+              include: [{ model: Produto, as: "produto", attributes: ["nome"] }],
+            },
+          ],
         },
       ],
       offset: pagina * quantidade,
@@ -59,11 +66,22 @@ class LojaService {
 
     const result = lojas.map((loja) => {
       const vendas = (loja.get("vendas") as any[]) ?? [];
-      const total_vendas = vendas.reduce((total, venda) => {
+      let total_vendas = 0;
+      let total_tratamento = 0;
+      let total_coloracao = 0;
+
+      for (const venda of vendas) {
         const detalhes = venda.venda_detalhe ?? [];
-        return total + detalhes.reduce((soma: number, vd: any) => soma + vd.quantidade, 0);
-      }, 0);
-      return { id: loja.id, nome_fantasia: loja.nome_fantasia, total_vendas };
+        for (const vd of detalhes) {
+          const qtd = vd.quantidade ?? 0;
+          total_vendas += qtd;
+          const nomeProd = String(vd.produto?.nome ?? "").toUpperCase();
+          if (nomeProd.startsWith("T ")) total_tratamento += qtd;
+          else if (nomeProd.startsWith("C ")) total_coloracao += qtd;
+        }
+      }
+
+      return { id: loja.id, nome_fantasia: loja.nome_fantasia, total_vendas, total_tratamento, total_coloracao };
     });
 
     result.sort((a, b) => b.total_vendas - a.total_vendas);
