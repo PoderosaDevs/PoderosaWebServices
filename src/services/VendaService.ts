@@ -1,4 +1,5 @@
 import { Op, Transaction } from "sequelize";
+import { startOfMonth } from "date-fns";
 import { sequelize } from "../config/database";
 import { Loja, Produto, Usuario, Venda, VendaDetalhe } from "../database/models";
 import { ApiError } from "../utils/apiError";
@@ -84,10 +85,20 @@ class VendaService {
     const where: Record<string, unknown> = { funcionario_id: id };
 
     if (dataMensal) {
+      if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(dataMensal)) {
+        throw ApiError.badRequest("data_mensal invalido. Use o formato MM/AA.");
+      }
+
       const [mes, ano] = dataMensal.split("/").map(Number);
       const anoCompleto = 2000 + ano;
       const inicio = new Date(anoCompleto, mes - 1, 1);
       const fim = new Date(anoCompleto, mes, 0, 23, 59, 59, 999);
+
+      const inicioMesAtual = startOfMonth(new Date());
+      if (inicio > inicioMesAtual) {
+        throw ApiError.badRequest("Nao e possivel consultar vendas de meses futuros.");
+      }
+
       where.data_venda = { [Op.gte]: inicio, [Op.lte]: fim };
     }
 
