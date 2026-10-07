@@ -388,13 +388,19 @@ class UsuarioService {
       detalheInclude.required = true;
     }
 
-    const vendas = await Venda.findAll({ where: whereVenda, include: [detalheInclude] });
+    const vendas = await Venda.findAll({
+      where: whereVenda,
+      include: [detalheInclude, { model: Loja, as: "loja", attributes: ["id", "nome_fantasia"] }],
+    });
 
-    const mapa: Record<string, { tratamentos: number; coloracoes: number }> = {};
+    const mapa: Record<string, { tratamentos: number; coloracoes: number; lojas: Set<string> }> = {};
 
     for (const venda of vendas) {
       const key = format(venda.data_venda, "yyyy-MM-dd");
-      if (!mapa[key]) mapa[key] = { tratamentos: 0, coloracoes: 0 };
+      if (!mapa[key]) mapa[key] = { tratamentos: 0, coloracoes: 0, lojas: new Set() };
+
+      const loja = venda.get("loja") as any;
+      if (loja) mapa[key].lojas.add(loja.nome_fantasia ?? "Loja sem nome");
 
       const detalhes = (venda.get("venda_detalhe") as any[]) ?? [];
       for (const det of detalhes) {
@@ -416,6 +422,7 @@ class UsuarioService {
         const dataFmt = format(new Date(year, month - 1, day), "dd/MM/yyyy");
         return {
           data: dataFmt,
+          lojas: Array.from(bucket.lojas),
           categories: [
             { title: "tratamentos", value: bucket.tratamentos },
             { title: "coloracoes", value: bucket.coloracoes },
