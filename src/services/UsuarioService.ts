@@ -390,18 +390,32 @@ class UsuarioService {
 
     const vendas = await Venda.findAll({
       where: whereVenda,
-      include: [detalheInclude, { model: Loja, as: "loja", attributes: ["id", "nome_fantasia"] }],
+      include: [
+        detalheInclude,
+        { model: Loja, as: "loja", attributes: ["id", "nome_fantasia"] },
+        { model: Usuario, as: "funcionario", attributes: ["id", "nome"] },
+      ],
     });
 
-    const mapa: Record<string, { tratamentos: number; coloracoes: number; lojas: Set<string> }> = {};
+    type Parcial = { id: number; nome: string; tratamentos: number; coloracoes: number };
+    const mapa: Record<
+      string,
+      { tratamentos: number; coloracoes: number; lojas: Map<number, Parcial>; vendedores: Map<number, Parcial> }
+    > = {};
+
+    const acumular = (grupo: Map<number, Parcial>, id: number, nome: string, tratamentos: number, coloracoes: number) => {
+      const atual = grupo.get(id) ?? { id, nome, tratamentos: 0, coloracoes: 0 };
+      atual.tratamentos += tratamentos;
+      atual.coloracoes += coloracoes;
+      grupo.set(id, atual);
+    };
 
     for (const venda of vendas) {
       const key = format(venda.data_venda, "yyyy-MM-dd");
-      if (!mapa[key]) mapa[key] = { tratamentos: 0, coloracoes: 0, lojas: new Set() };
+      if (!mapa[key]) mapa[key] = { tratamentos: 0, coloracoes: 0, lojas: new Map(), vendedores: new Map() };
 
-      const loja = venda.get("loja") as any;
-      if (loja) mapa[key].lojas.add(loja.nome_fantasia ?? "Loja sem nome");
-
+      let tratamentos = 0;
+      let coloracoes = 0;
       const detalhes = (venda.get("venda_detalhe") as any[]) ?? [];
       for (const det of detalhes) {
         if (type === InsightTargetType.BRAND && det.produto?.id_marca !== targetId) continue;
@@ -409,10 +423,22 @@ class UsuarioService {
         const nomeProduto = String(det.produto?.nome ?? "").trim().toUpperCase();
         const quantidade = Number(det.quantidade ?? 0);
 
-        if (nomeProduto.startsWith("T ")) mapa[key].tratamentos += quantidade;
-        else if (nomeProduto.startsWith("C ")) mapa[key].coloracoes += quantidade;
+        if (nomeProduto.startsWith("T ")) tratamentos += quantidade;
+        else if (nomeProduto.startsWith("C ")) coloracoes += quantidade;
       }
+
+      mapa[key].tratamentos += tratamentos;
+      mapa[key].coloracoes += coloracoes;
+
+      const loja = venda.get("loja") as any;
+      if (loja) acumular(mapa[key].lojas, loja.id, loja.nome_fantasia ?? "Loja sem nome", tratamentos, coloracoes);
+
+      const funcionario = venda.get("funcionario") as any;
+      if (funcionario) acumular(mapa[key].vendedores, funcionario.id, funcionario.nome ?? "Sem nome", tratamentos, coloracoes);
     }
+
+    const ordenar = (grupo: Map<number, Parcial>) =>
+      Array.from(grupo.values()).sort((a, b) => b.tratamentos + b.coloracoes - (a.tratamentos + a.coloracoes));
 
     return Object.keys(mapa)
       .sort()
@@ -422,7 +448,8 @@ class UsuarioService {
         const dataFmt = format(new Date(year, month - 1, day), "dd/MM/yyyy");
         return {
           data: dataFmt,
-          lojas: Array.from(bucket.lojas),
+          lojas: ordenar(bucket.lojas),
+          vendedores: ordenar(bucket.vendedores),
           categories: [
             { title: "tratamentos", value: bucket.tratamentos },
             { title: "coloracoes", value: bucket.coloracoes },
